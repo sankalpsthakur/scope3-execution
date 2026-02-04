@@ -1,16 +1,46 @@
 {
   "summary": {
-    "total_tests": 1,
-    "passed_tests": 0,
-    "success_rate": 0.0,
-    "timestamp": "2026-02-04T22:48:25.861101"
+    "total_tests": 6,
+    "passed_tests": 4,
+    "success_rate": 66.66666666666666,
+    "timestamp": "2026-02-04T22:49:12.062901"
   },
   "results": [
     {
       "test": "Authentication",
+      "success": true,
+      "details": "Authenticated as user: test-user-1770244803683",
+      "timestamp": "2026-02-04T22:48:52.176957"
+    },
+    {
+      "test": "Deep Dive Normal Usage",
+      "success": true,
+      "details": "All 5 calls succeeded (no 429)",
+      "timestamp": "2026-02-04T22:48:58.734551"
+    },
+    {
+      "test": "Deep Dive Rate Limiting",
       "success": false,
-      "details": "Auth failed with status 401",
-      "timestamp": "2026-02-04T22:48:25.860284"
+      "details": "Rate limit not triggered properly. Successful calls: 10, Rate limit hit: True",
+      "timestamp": "2026-02-04T22:48:59.160122"
+    },
+    {
+      "test": "PDF Export Rate Limiting",
+      "success": true,
+      "details": "Rate limit triggered after 10 calls (expected ~10)",
+      "timestamp": "2026-02-04T22:49:11.875895"
+    },
+    {
+      "test": "Audit Events Generation",
+      "success": false,
+      "details": "Only generated 2 audit events",
+      "timestamp": "2026-02-04T22:49:12.023773"
+    },
+    {
+      "test": "Post-Audit API Functionality",
+      "success": true,
+      "details": "APIs continue to work after audit events",
+      "timestamp": "2026-02-04T22:49:12.061881"
     }
   ]
 }
