@@ -87,8 +87,10 @@ Frontend (React + Tailwind + Shadcn) → Backend (FastAPI) → MongoDB
 - [ ] Carbon reduction progress tracking
 
 ## Next Tasks
-1. Add PDF export for recommendations
-2. Implement supplier engagement status tracking
-3. Add notification system for high-priority actions
-4. Create settings page for user preferences
-5. Add data filtering (by category, rating, impact threshold)
+1. ~~Add PDF export for recommendations~~ ✅ DONE
+2. ~~Implement supplier engagement status tracking~~ ✅ DONE  
+3. ~~Add data filtering (by category, rating, impact threshold)~~ ✅ DONE
+4. Add notification system for high-priority actions
+5. Create settings page for user preferences
+6. Export engagement history to CSV
+7. Add bulk actions for multiple suppliers
