@@ -1011,6 +1011,7 @@ async def seed_measure_data(request: Request):
         },
         {
             "id": str(uuid.uuid4()),
+            "user_id": user_id,
             "supplier_id": "ups_001",
             "supplier_name": "UPS Logistics",
             "category": "Transport & Distribution",
@@ -1046,6 +1047,7 @@ async def seed_measure_data(request: Request):
         },
         {
             "id": str(uuid.uuid4()),
+            "user_id": user_id,
             "supplier_id": "dow_001",
             "supplier_name": "Dow Inc",
             "category": "Fuel & Energy Activities",
