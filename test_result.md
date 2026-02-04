@@ -101,3 +101,72 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+## user_problem_statement: "AI-powered Scope 3 Reduce module that ranks suppliers by upstream impact and provides peer-validated action plans with evidence + contract clauses"
+## backend:
+##   - task: "Mock pipeline + realistic dataset (benchmarks + disclosure chunks)"
+##     implemented: true
+##     working: "NA"
+##     file: "/app/backend/server.py"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: true
+##     status_history:
+##       - working: "NA"
+##         agent: "main"
+##         comment: "Rewrote backend to simulate the Tech Spec pipeline (precomputed benchmarks + evidence chunks + RAG-style generation w/ guardrails). Added /api/pipeline/run and /api/v1/recommendations/... endpoint. Default views exclude leaders and zero-impact suppliers."
+##   - task: "Deep dive endpoint contract + citations + edge cases"
+##     implemented: true
+##     working: "NA"
+##     file: "/app/backend/server.py"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: true
+##     status_history:
+##       - working: "NA"
+##         agent: "main"
+##         comment: "Deep dive now returns evidence_status, source_docs (with page) and source_citations w/ quotes. If no evidence chunks exist, returns a generic template and action_plan = null."
+##
+## frontend:
+##   - task: "Reduce dashboard server-side filtering + evidence excerpts UI"
+##     implemented: true
+##     working: "NA"
+##     file: "/app/frontend/src/pages/ReduceDashboard.jsx"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: true
+##     status_history:
+##       - working: "NA"
+##         agent: "main"
+##         comment: "Reduce module now calls /api/suppliers/filter for filtering, keeps client-side sorting. Deep dive shows narrative, evidence excerpts, sources with page numbers, and handles null action_plan."
+##   - task: "Module navigation (Measure/Reduce/Engage/Report)"
+##     implemented: true
+##     working: "NA"
+##     file: "/app/frontend/src/pages/Dashboard.jsx"
+##     stuck_count: 0
+##     priority: "medium"
+##     needs_retesting: true
+##     status_history:
+##       - working: "NA"
+##         agent: "main"
+##         comment: "Sidebar now navigates between module routes under /dashboard/*; Engage page shows engagement table + opens deep dive. Measure/Report are V1 placeholders."
+##
+## metadata:
+##   created_by: "main_agent"
+##   version: "1.0"
+##   test_sequence: 3
+##   run_ui: true
+##
+## test_plan:
+##   current_focus:
+##     - "Mock pipeline + realistic dataset (benchmarks + disclosure chunks)"
+##     - "Deep dive endpoint contract + citations + edge cases"
+##     - "Reduce dashboard server-side filtering + evidence excerpts UI"
+##     - "Module navigation (Measure/Reduce/Engage/Report)"
+##   stuck_tasks: []
+##   test_all: true
+##   test_priority: "high_first"
+##
+## agent_communication:
+##   - agent: "main"
+##     message: "Please run full backend + frontend testing including OAuth login, /dashboard modules navigation, Reduce table + filters, deep dive (including missing-evidence case), engagement updates, copy clause toast, and PDF export. Log results and create /app/test_reports/iteration_3.json."
