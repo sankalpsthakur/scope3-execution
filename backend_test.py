@@ -111,16 +111,10 @@ class Scope3ReduceAPITester:
         print("CREATING TEST SESSION")
         print("="*50)
         
-        # Create test session token
-        timestamp = int(time.time())
-        self.session_token = f"test_session_{timestamp}"
+        # Use the session token created in MongoDB
+        self.session_token = "test_session_1770232573942"
         
-        # Mock session data for testing
-        session_data = {
-            "session_id": f"test_session_id_{timestamp}"
-        }
-        
-        print(f"   Using test session token: {self.session_token}")
+        print(f"   Using MongoDB session token: {self.session_token}")
         return True
 
     def test_auth_endpoints(self):
