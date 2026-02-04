@@ -560,7 +560,7 @@ async def generate_recommendations_batch(request: Request):
     user = await get_user_from_request(request)
     tenant_id = user["user_id"]
 
-    _rate_limit(f"pipeline_generate:{tenant_id}", limit=4, window_seconds=60)
+    await _rate_limit_persistent(tenant_id, action="pipeline_generate", limit=4, window_seconds=60)
 
     benchmarks = await db.supplier_benchmarks.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(500)
     if not benchmarks:
