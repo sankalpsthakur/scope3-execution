@@ -165,6 +165,7 @@ async def create_session(request: Request, response: Response):
         )
 
         user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+        await _log_audit(user_id, "auth.login", {"provider": "emergent_google"})
         return {"user": user_doc, "session_token": session_token}
 
     except HTTPException:
@@ -243,8 +244,15 @@ async def _log_audit(user_id: str, action: str, meta: Optional[Dict[str, Any]] =
 @api_router.post("/auth/logout")
 async def logout(request: Request, response: Response):
     session_token = request.cookies.get("session_token")
+    user_id = None
     if session_token:
+        session_doc = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
+        if session_doc:
+            user_id = session_doc.get("user_id")
         await db.user_sessions.delete_one({"session_token": session_token})
+
+    if user_id:
+        await _log_audit(user_id, "auth.logout")
 
     response.delete_cookie(key="session_token", path="/", secure=True, samesite="none")
     return {"message": "Logged out successfully"}
@@ -605,13 +613,15 @@ async def get_heatmap_data(request: Request):
 @api_router.get("/suppliers/{supplier_id}/deep-dive")
 async def get_supplier_deep_dive(supplier_id: str, request: Request):
     """Legacy deep-dive endpoint used by the current frontend."""
-    await get_user_from_request(request)
+    user = await get_user_from_request(request)
+    _rate_limit(f"deep_dive:{user['user_id']}", limit=15, window_seconds=60)
 
     benchmark = await get_benchmark_by_supplier_identifier(supplier_id)
     if not benchmark:
         raise HTTPException(status_code=404, detail="Supplier not found")
 
     recommendation = await get_or_generate_recommendation(benchmark)
+    await _log_audit(user["user_id"], "deep_dive.view", {"benchmark_id": benchmark["id"]})
     return build_deep_dive_response(benchmark, recommendation)
 
 
@@ -686,8 +696,12 @@ async def get_engagement(supplier_id: str, request: Request):
 @api_router.put("/engagements/{supplier_id}")
 async def update_engagement(supplier_id: str, update: EngagementUpdate, request: Request):
     user = await get_user_from_request(request)
+    _rate_limit(f"engagement:{user['user_id']}", limit=30, window_seconds=60)
 
     existing = await db.supplier_engagements.find_one({"user_id": user["user_id"], "supplier_id": supplier_id})
+
+
+    await _log_audit(user["user_id"], "engagement.update", {"supplier_id": supplier_id, "status": update.status})
 
     history_entry = {
         "status": update.status,
@@ -737,7 +751,8 @@ async def update_engagement(supplier_id: str, update: EngagementUpdate, request:
 
 @api_router.get("/suppliers/{supplier_id}/export-pdf")
 async def export_recommendation_pdf(supplier_id: str, request: Request):
-    await get_user_from_request(request)
+    user = await get_user_from_request(request)
+    _rate_limit(f"pdf:{user['user_id']}", limit=10, window_seconds=60)
 
     benchmark = await get_benchmark_by_supplier_identifier(supplier_id)
     if not benchmark:
@@ -746,6 +761,7 @@ async def export_recommendation_pdf(supplier_id: str, request: Request):
     recommendation = await get_or_generate_recommendation(benchmark)
 
     pdf_buffer = generate_pdf_report(benchmark, recommendation)
+    await _log_audit(user["user_id"], "pdf.export", {"benchmark_id": benchmark["id"], "supplier_name": benchmark.get("supplier_name")})
 
     filename = f"recommendation_{benchmark['supplier_name'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
 
