@@ -2,20 +2,42 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { 
-  Sparkles, Copy, Check, ExternalLink
+  Sparkles, Copy, Check, ExternalLink, FileDown, Clock, 
+  MessageSquare, Calendar
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription 
 } from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-export const DeepDivePanel = ({ supplier, isOpen, onClose }) => {
+// Engagement status configuration
+const ENGAGEMENT_STATUSES = {
+  not_started: { label: "Not Started", color: "bg-gray-500/20 text-gray-400" },
+  in_progress: { label: "In Progress", color: "bg-[#0EA5E9]/20 text-[#0EA5E9]" },
+  pending_response: { label: "Pending Response", color: "bg-[#F59E0B]/20 text-[#F59E0B]" },
+  completed: { label: "Completed", color: "bg-[#22C55E]/20 text-[#22C55E]" },
+  on_hold: { label: "On Hold", color: "bg-[#EF4444]/20 text-[#EF4444]" }
+};
+
+export const DeepDivePanel = ({ supplier, isOpen, onClose, onEngagementUpdate }) => {
   const [deepDive, setDeepDive] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [engagement, setEngagement] = useState(null);
+  const [showNotes, setShowNotes] = useState(false);
+  const [notes, setNotes] = useState("");
 
   const fetchDeepDive = useCallback(async () => {
     if (!supplier) return;
@@ -33,11 +55,25 @@ export const DeepDivePanel = ({ supplier, isOpen, onClose }) => {
     }
   }, [supplier]);
 
+  const fetchEngagement = useCallback(async () => {
+    if (!supplier) return;
+    try {
+      const response = await axios.get(`${API}/engagements/${supplier.id}`, {
+        withCredentials: true,
+      });
+      setEngagement(response.data);
+      setNotes(response.data.notes || "");
+    } catch (error) {
+      console.error("Failed to fetch engagement:", error);
+    }
+  }, [supplier]);
+
   useEffect(() => {
     if (isOpen && supplier) {
       fetchDeepDive();
+      fetchEngagement();
     }
-  }, [isOpen, supplier, fetchDeepDive]);
+  }, [isOpen, supplier, fetchDeepDive, fetchEngagement]);
 
   const handleCopyClause = () => {
     if (deepDive?.content?.contract_clause) {
@@ -45,6 +81,66 @@ export const DeepDivePanel = ({ supplier, isOpen, onClose }) => {
       setCopied(true);
       toast.success("Contract clause copied to clipboard");
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!supplier) return;
+    setExporting(true);
+    try {
+      const response = await axios.get(`${API}/suppliers/${supplier.id}/export-pdf`, {
+        withCredentials: true,
+        responseType: 'blob'
+      });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `recommendation_${supplier.supplier_name.replace(/\s+/g, '_')}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("PDF exported successfully");
+    } catch (error) {
+      console.error("Failed to export PDF:", error);
+      toast.error("Failed to export PDF");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleEngagementChange = async (status) => {
+    if (!supplier) return;
+    try {
+      const response = await axios.put(
+        `${API}/engagements/${supplier.id}`,
+        { status, notes },
+        { withCredentials: true }
+      );
+      setEngagement(response.data);
+      if (onEngagementUpdate) onEngagementUpdate(status);
+      toast.success("Engagement status updated");
+    } catch (error) {
+      toast.error("Failed to update engagement");
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!supplier || !engagement) return;
+    try {
+      const response = await axios.put(
+        `${API}/engagements/${supplier.id}`,
+        { status: engagement.status, notes },
+        { withCredentials: true }
+      );
+      setEngagement(response.data);
+      toast.success("Notes saved");
+      setShowNotes(false);
+    } catch (error) {
+      toast.error("Failed to save notes");
     }
   };
 
@@ -57,11 +153,29 @@ export const DeepDivePanel = ({ supplier, isOpen, onClose }) => {
         <div className="h-full flex flex-col">
           <div className="p-6 border-b border-white/10 glass">
             <SheetHeader>
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-4 h-4 text-[#22C55E] sparkle-icon" />
-                <span className="text-xs text-[#22C55E] uppercase tracking-wider font-display font-bold">
-                  AI Recommendation
-                </span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-[#22C55E] sparkle-icon" />
+                  <span className="text-xs text-[#22C55E] uppercase tracking-wider font-display font-bold">
+                    AI Recommendation
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleExportPDF}
+                  disabled={exporting || loading}
+                  className="bg-[#22C55E]/20 text-[#22C55E] hover:bg-[#22C55E]/30 border-0"
+                  data-testid="export-pdf-btn"
+                >
+                  {exporting ? (
+                    <div className="w-4 h-4 border-2 border-[#22C55E] border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <FileDown className="w-4 h-4 mr-1" />
+                      Export PDF
+                    </>
+                  )}
+                </Button>
               </div>
               <SheetTitle className="font-display text-2xl font-bold text-white tracking-tight">
                 {supplier?.supplier_name}
@@ -70,6 +184,64 @@ export const DeepDivePanel = ({ supplier, isOpen, onClose }) => {
                 Reduction Action Plan for {deepDive?.meta?.category || supplier?.category}
               </SheetDescription>
             </SheetHeader>
+
+            {/* Engagement Status Bar */}
+            <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-500 uppercase tracking-wider">Engagement:</span>
+                  <Select 
+                    value={engagement?.status || "not_started"} 
+                    onValueChange={handleEngagementChange}
+                  >
+                    <SelectTrigger className="w-[160px] h-8 bg-transparent border-white/10 text-white text-xs" data-testid="engagement-select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#121212] border-white/10">
+                      {Object.entries(ENGAGEMENT_STATUSES).map(([key, value]) => (
+                        <SelectItem key={key} value={key} className="text-xs">
+                          <div className="flex items-center">
+                            <span className={`w-2 h-2 rounded-full mr-2 ${value.color.split(' ')[0]}`} />
+                            {value.label}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowNotes(!showNotes)}
+                  className="text-gray-400 hover:text-white h-8"
+                  data-testid="toggle-notes-btn"
+                >
+                  <MessageSquare className="w-4 h-4 mr-1" />
+                  Notes
+                </Button>
+              </div>
+              
+              {showNotes && (
+                <div className="mt-3 space-y-2">
+                  <Textarea
+                    placeholder="Add engagement notes..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="bg-[#0A0A0A] border-white/10 text-white text-sm min-h-[80px]"
+                    data-testid="engagement-notes"
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      onClick={handleSaveNotes}
+                      className="bg-[#22C55E] text-black hover:bg-[#22C55E]/90 h-7 text-xs"
+                    >
+                      Save Notes
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto">
@@ -155,7 +327,10 @@ export const DeepDivePanel = ({ supplier, isOpen, onClose }) => {
                 </div>
 
                 <div className="metric-card p-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Feasibility Timeline</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="w-4 h-4 text-gray-500" />
+                    <p className="text-xs text-gray-500 uppercase tracking-wider">Feasibility Timeline</p>
+                  </div>
                   <p className="font-display font-bold text-white text-lg">
                     {deepDive.content.feasibility_timeline}
                   </p>
