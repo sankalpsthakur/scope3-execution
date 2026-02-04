@@ -1484,8 +1484,12 @@ async def seed_mock_data():
 
 @api_router.post("/pipeline/run")
 async def run_mock_pipeline(request: Request):
-    """Mock pipeline trigger (re-seeds the precomputed tables)."""
+    """Mock pipeline trigger (re-seeds Measure + Reduce precomputed tables).
+
+    This simulates the nightly batch pipeline described in the tech spec.
+    """
     await get_user_from_request(request)
+    await seed_measure_data(request)
     return await seed_mock_data()
 
 
