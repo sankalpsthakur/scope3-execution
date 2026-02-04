@@ -197,7 +197,7 @@
 ##         comment: "ITERATION 3 MODULE NAVIGATION TESTING COMPLETED: ✅ Engage module loads correctly with supplier engagement table showing 5 engagement rows. ✅ Engagement status changes work - can see different statuses (In Progress, Pending, Completed, On Hold, Not Started). ✅ Engagement status persistence confirmed. ✅ Measure module placeholder renders correctly with V1 placeholder text and mock dataset notice. ✅ Report module placeholder renders correctly with V1 placeholder text and next steps recommendation. ✅ Module navigation via sidebar works for all modules - active module properly highlighted. ✅ Landing page sign-in redirect works correctly. All module navigation and engagement functionality working as specified."
 ##   - task: "New Measure module with baseline inventory and metrics"
 ##     implemented: true
-##     working: true
+##     working: false
 ##     file: "/app/frontend/src/pages/MeasurePage.jsx"
 ##     stuck_count: 0
 ##     priority: "high"
