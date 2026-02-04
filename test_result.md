@@ -209,6 +209,9 @@
       - working: false
         agent: "testing"
         comment: "MEASURE MODULE REGRESSION DETECTED: ❌ Page loads but shows loading spinner indefinitely, metric cards not populating despite backend /api/measure/overview working correctly. Same frontend React state management issue affecting all modules - API responses not being processed and displayed in UI components."
+      - working: false
+        agent: "testing"
+        comment: "DETERMINISTIC AUTH + COOKIE FLAGS RE-TEST COMPLETED: ✅ SameSite=None; Secure=true cookie flags working correctly for cross-site authentication. ✅ Backend /api/measure/overview returns correct data (total_upstream_tco2e=1035000, coverage_pct=100%). ❌ CRITICAL: Measure page UI remains stuck in loading spinner state indefinitely despite successful API responses. Frontend React state management issue in MeasurePage.jsx prevents data from being displayed in UI components. Root cause: API data fetching works but React state updates are failing to trigger UI re-renders."
 ##
 ## metadata:
 ##   created_by: "main_agent"
