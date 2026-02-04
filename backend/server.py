@@ -434,7 +434,10 @@ Context:
 
 
 async def get_or_generate_recommendation(benchmark: dict) -> dict:
-    cached = await db.recommendation_content.find_one({"benchmark_id": benchmark["id"]}, {"_id": 0})
+    cached = await db.recommendation_content.find_one(
+        {"benchmark_id": benchmark["id"], "tenant_id": benchmark.get("tenant_id")},
+        {"_id": 0}
+    )
     if cached:
         return cached
 
@@ -445,8 +448,8 @@ async def get_or_generate_recommendation(benchmark: dict) -> dict:
     recommendation = await generate_ai_recommendation(benchmark, raw_context, citations)
 
     await db.recommendation_content.replace_one(
-        {"benchmark_id": benchmark["id"]},
-        {**recommendation, "benchmark_id": benchmark["id"]},
+        {"benchmark_id": benchmark["id"], "tenant_id": benchmark.get("tenant_id")},
+        {**recommendation, "benchmark_id": benchmark["id"], "tenant_id": benchmark.get("tenant_id")},
         upsert=True,
     )
     return recommendation
@@ -493,11 +496,17 @@ def build_deep_dive_response(benchmark: dict, recommendation: dict) -> dict:
     }
 
 
-async def get_benchmark_by_supplier_identifier(supplier_identifier: str) -> Optional[dict]:
-    benchmark = await db.supplier_benchmarks.find_one({"id": supplier_identifier}, {"_id": 0})
+async def get_benchmark_by_supplier_identifier(supplier_identifier: str, tenant_id: str) -> Optional[dict]:
+    benchmark = await db.supplier_benchmarks.find_one(
+        {"id": supplier_identifier, "tenant_id": tenant_id},
+        {"_id": 0}
+    )
     if benchmark:
         return benchmark
-    return await db.supplier_benchmarks.find_one({"supplier_id": supplier_identifier}, {"_id": 0})
+    return await db.supplier_benchmarks.find_one(
+        {"supplier_id": supplier_identifier, "tenant_id": tenant_id},
+        {"_id": 0}
+    )
 
 
 # ==================== SUPPLIER ENDPOINTS ====================
@@ -505,9 +514,10 @@ async def get_benchmark_by_supplier_identifier(supplier_identifier: str) -> Opti
 @api_router.get("/suppliers")
 async def get_suppliers(request: Request):
     """Top Reduction Actions table (default excludes leaders + zero impact)."""
-    await get_user_from_request(request)
+    user = await get_user_from_request(request)
 
     base_query: Dict[str, Any] = {
+        "tenant_id": user["user_id"],
         "upstream_impact_pct": {"$gt": 0},
         "$expr": {"$gt": ["$supplier_intensity", "$peer_intensity"]},
     }
@@ -535,7 +545,10 @@ async def get_filtered_suppliers(
     """Server-side filtering (default excludes leaders + zero impact)."""
     await get_user_from_request(request)
 
+    user = await get_user_from_request(request)
+
     query: Dict[str, Any] = {
+        "tenant_id": user["user_id"],
         "upstream_impact_pct": {"$gt": 0},
         "$expr": {"$gt": ["$supplier_intensity", "$peer_intensity"]},
     }
@@ -591,7 +604,10 @@ async def get_heatmap_data(request: Request):
     """Heatmap supports the alternative visual path; uses same default exclusions."""
     await get_user_from_request(request)
 
+    user = await get_user_from_request(request)
+
     base_query: Dict[str, Any] = {
+        "tenant_id": user["user_id"],
         "upstream_impact_pct": {"$gt": 0},
         "$expr": {"$gt": ["$supplier_intensity", "$peer_intensity"]},
     }
@@ -618,7 +634,7 @@ async def get_supplier_deep_dive(supplier_id: str, request: Request):
     user = await get_user_from_request(request)
     _rate_limit(f"deep_dive:{user['user_id']}", limit=15, window_seconds=60)
 
-    benchmark = await get_benchmark_by_supplier_identifier(supplier_id)
+    benchmark = await get_benchmark_by_supplier_identifier(supplier_id, tenant_id=user["user_id"])
     if not benchmark:
         raise HTTPException(status_code=404, detail="Supplier not found")
 
@@ -630,10 +646,9 @@ async def get_supplier_deep_dive(supplier_id: str, request: Request):
 @api_router.get("/v1/recommendations/supplier/{supplier_id}/deep-dive")
 async def get_supplier_deep_dive_v1(supplier_id: str, request: Request):
     """Tech-spec endpoint: returns the engineering handover contract JSON."""
-    await get_user_from_request(request)
+    user = await get_user_from_request(request)
 
-    benchmark = await get_benchmark_by_supplier_identifier(supplier_id)
-    if not benchmark:
+    benchmark = await get_benchmark_by_supplier_identifier(supplier_id, tenant_id=user["user_id"])    if not benchmark:
         raise HTTPException(status_code=404, detail="Supplier not found")
 
     recommendation = await get_or_generate_recommendation(benchmark)
@@ -1323,10 +1338,15 @@ async def seed_mock_data(request: Request):
     """
     await get_user_from_request(request)
 
-    # NOTE: Benchmarks are demo-global today; in production these must be org/user partitioned.
-    await db.supplier_benchmarks.delete_many({})
-    await db.recommendation_content.delete_many({})
-    await db.disclosure_chunks.delete_many({})
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    await db.supplier_benchmarks.delete_many({"tenant_id": tenant_id})
+    await db.recommendation_content.delete_many({"tenant_id": tenant_id})
+
+    # disclosure_chunks are treated as public/peer evidence and are global in this demo.
+    if await db.disclosure_chunks.estimated_document_count() == 0:
+        await db.disclosure_chunks.delete_many({})
 
     # Company universe (mock “1M disclosures” reduced to a small realistic sample)
     companies = [
@@ -1478,6 +1498,7 @@ async def seed_mock_data(request: Request):
         benchmarks.append(
             {
                 "id": str(uuid.uuid4()),
+                "tenant_id": tenant_id,
                 "supplier_id": f"{supplier_company_id}_001",
                 "supplier_name": supplier_company["name"],
                 "peer_id": f"{peer_company_id}_001",
@@ -1569,7 +1590,8 @@ async def seed_mock_data(request: Request):
         },
     ]
 
-    await db.disclosure_chunks.insert_many(chunks)
+    if await db.disclosure_chunks.estimated_document_count() == 0:
+        await db.disclosure_chunks.insert_many(chunks)
 
     return {"message": "Mock data seeded successfully", "count": len(benchmarks), "note": "Includes edge cases (leader + zero spend) which are excluded by default views."}
 
