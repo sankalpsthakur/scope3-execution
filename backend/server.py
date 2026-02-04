@@ -1098,7 +1098,6 @@ async def _compute_inventory(period: str, user_id: str = "_global_demo") -> Dict
     year = 2024
 
     # Partition by user for MVP (multi-tenant readiness)
-    user_id = "_global_demo"
     purchases = await db.measure_purchases.find({"user_id": user_id}, {"_id": 0}).to_list(5000)
     activities = await db.measure_activity.find({"user_id": user_id}, {"_id": 0}).to_list(5000)
 
