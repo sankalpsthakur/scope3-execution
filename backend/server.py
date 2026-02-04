@@ -1163,7 +1163,7 @@ async def update_engagement(supplier_id: str, update: EngagementUpdate, request:
 @api_router.get("/suppliers/{supplier_id}/export-pdf")
 async def export_recommendation_pdf(supplier_id: str, request: Request):
     user = await get_user_from_request(request)
-    _rate_limit(f"pdf:{user['user_id']}", limit=10, window_seconds=60)
+    await _rate_limit_persistent(user["user_id"], action="pdf", limit=10, window_seconds=60)
 
     benchmark = await get_benchmark_by_supplier_identifier(supplier_id, tenant_id=user["user_id"])
     if not benchmark:
