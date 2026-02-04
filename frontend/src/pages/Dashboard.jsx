@@ -169,7 +169,12 @@ export default function Dashboard() {
     });
   };
 
-  const activeFilterCount = Object.values(filters).filter(v => v !== "").length;
+  const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
+    if (key === 'category' || key === 'rating') {
+      return value !== "all";
+    }
+    return value !== "";
+  }).length;
 
   const SortIcon = ({ column }) => {
     if (sortConfig.key !== column) return null;
