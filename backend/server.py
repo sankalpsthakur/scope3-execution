@@ -772,7 +772,7 @@ async def export_recommendation_pdf(supplier_id: str, request: Request):
     user = await get_user_from_request(request)
     _rate_limit(f"pdf:{user['user_id']}", limit=10, window_seconds=60)
 
-    benchmark = await get_benchmark_by_supplier_identifier(supplier_id)
+    benchmark = await get_benchmark_by_supplier_identifier(supplier_id, tenant_id=user["user_id"])
     if not benchmark:
         raise HTTPException(status_code=404, detail="Supplier not found")
 
