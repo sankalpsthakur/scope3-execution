@@ -436,7 +436,7 @@ export default function ReduceDashboard({ onGoToEngage }) {
                     data-testid="sort-organization"
                   >
                     <div className="flex items-center">
-                      Organization<SortIcon column="supplier_name" />
+                      Organization<SortIcon sortConfig={sortConfig} column="supplier_name" />
                     </div>
                   </TableHead>
                   <TableHead
