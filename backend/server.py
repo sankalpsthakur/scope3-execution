@@ -585,15 +585,8 @@ async def generate_recommendations_batch(request: Request):
     await _log_audit(tenant_id, "pipeline.generate", {"generated": generated})
     return {"message": "Batch generation complete", "generated": generated}
 
-    """Very small in-memory rate limiter (single-process)."""
-    import time
-
-    now = time.time()
-    bucket = _rate_state.setdefault(key, [])
-    bucket[:] = [t for t in bucket if now - t < window_seconds]
-    if len(bucket) >= limit:
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
-    bucket.append(now)
+    # in-memory rate limiter removed; using Mongo-backed rate limiting with TTL instead.
+    return
 
 
 async def _log_audit(user_id: str, action: str, meta: Optional[Dict[str, Any]] = None) -> None:
