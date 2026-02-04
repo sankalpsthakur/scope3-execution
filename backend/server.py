@@ -1271,6 +1271,7 @@ async def seed_mock_data(request: Request):
     """
     await get_user_from_request(request)
 
+    # NOTE: Benchmarks are demo-global today; in production these must be org/user partitioned.
     await db.supplier_benchmarks.delete_many({})
     await db.recommendation_content.delete_many({})
     await db.disclosure_chunks.delete_many({})
