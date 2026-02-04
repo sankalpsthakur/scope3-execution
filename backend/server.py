@@ -1248,8 +1248,8 @@ async def _compute_inventory(period: str, user_id: str = "_global_demo") -> Dict
 
 @api_router.get("/measure/overview")
 async def measure_overview(request: Request, period: str = "last_12_months"):
-    await get_user_from_request(request)
-    return await _compute_inventory(period)
+    user = await get_user_from_request(request)
+    return await _compute_inventory(period, user_id=user["user_id"])
 
 
 @api_router.get("/measure/suppliers")
