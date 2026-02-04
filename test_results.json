@@ -1,76 +1,76 @@
 {
   "summary": {
     "tests_run": 11,
-    "tests_passed": 10,
-    "success_rate": 90.9090909090909,
-    "timestamp": "2026-02-04T22:55:43.117760"
+    "tests_passed": 11,
+    "success_rate": 100.0,
+    "timestamp": "2026-02-04T22:56:55.571038"
   },
   "results": [
     {
       "test": "POST Pipeline Run",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T22:55:36.845484"
+      "timestamp": "2026-02-04T22:56:49.623679"
     },
     {
       "test": "GET Suppliers",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T22:55:36.881226"
+      "timestamp": "2026-02-04T22:56:49.658891"
     },
     {
       "test": "Suppliers Non-Empty Validation",
       "success": true,
       "details": "Found 5 suppliers",
-      "timestamp": "2026-02-04T22:55:36.881651"
+      "timestamp": "2026-02-04T22:56:49.659438"
     },
     {
       "test": "Upstream Impact Validation",
       "success": true,
       "details": "All 5 suppliers have upstream_impact_pct > 0",
-      "timestamp": "2026-02-04T22:55:36.881661"
+      "timestamp": "2026-02-04T22:56:49.659449"
     },
     {
       "test": "GET Suppliers Filter",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T22:55:36.922027"
+      "timestamp": "2026-02-04T22:56:49.694216"
     },
     {
       "test": "GET Measure Overview",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T22:55:36.960066"
+      "timestamp": "2026-02-04T22:56:49.732825"
     },
     {
       "test": "Measure Total Upstream Validation",
       "success": true,
       "details": "total_upstream_tco2e = 1035000.0",
-      "timestamp": "2026-02-04T22:55:36.960550"
+      "timestamp": "2026-02-04T22:56:49.733275"
     },
     {
       "test": "Measure Coverage Validation",
       "success": true,
       "details": "coverage_pct = 100.0%",
-      "timestamp": "2026-02-04T22:55:36.960560"
+      "timestamp": "2026-02-04T22:56:49.733284"
     },
     {
       "test": "GET Deep Dive",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T22:55:43.064279"
+      "timestamp": "2026-02-04T22:56:55.508692"
     },
     {
       "test": "Deep Dive Structure Validation",
       "success": true,
       "details": "All required sections present",
-      "timestamp": "2026-02-04T22:55:43.064871"
+      "timestamp": "2026-02-04T22:56:55.509371"
     },
     {
       "test": "PDF Export Validation",
-      "success": false,
-      "details": "HTTP 520",
-      "timestamp": "2026-02-04T22:55:43.117101"
+      "success": true,
+      "details": "PDF generated successfully (4617 bytes)",
+      "timestamp": "2026-02-04T22:56:55.570308"
     }
   ]
 }
