@@ -145,9 +145,9 @@
 ## frontend:
 ##   - task: "Reduce dashboard server-side filtering + evidence excerpts UI"
 ##     implemented: true
-##     working: true
+##     working: false
 ##     file: "/app/frontend/src/pages/ReduceDashboard.jsx"
-##     stuck_count: 2
+##     stuck_count: 3
 ##     priority: "high"
 ##     needs_retesting: false
 ##     status_history:
@@ -172,6 +172,9 @@
 ##       - working: true
 ##         agent: "testing"
 ##         comment: "VIEW SWITCHING BUG FIX VERIFICATION COMPLETED: ✅ Successfully authenticated using existing session token (test_session_1770238549883). ✅ Initial table view loaded with 10 suppliers correctly. ✅ Heatmap view switch successful - heatmap container found with 13 grid/cell elements and proper color coding. ✅ CRITICAL SUCCESS: Table view maintains 10 suppliers after switching back from heatmap view - VIEW SWITCHING BUG IS FIXED! ✅ Filter functionality working - applied 1% min impact filter reduced suppliers to 6 as expected. ✅ Deep dive panel functionality confirmed working (opened during test). ⚠️ Minor: Modal overlay prevented completing full filter+view switch test, but core bug is resolved. The useEffect hook on lines 161-166 in ReduceDashboard.jsx successfully refreshes table data when switching back to table view."
+##       - working: false
+##         agent: "testing"
+##         comment: "REDUCE UI REGRESSION FIX VERIFICATION COMPLETED: ❌ CRITICAL REGRESSION STILL PRESENT: Despite previous fixes, the Reduce table remains completely empty (0 suppliers displayed). ✅ Authentication working correctly using POST /api/auth/test-login with X-Test-Auth header (TEST_AUTH_TOKEN). ✅ Backend API functioning perfectly - /api/suppliers/filter returns 10 suppliers with correct data structure {suppliers: [...], total: 10, filters: {...}}. ✅ Dashboard loads successfully with all UI elements present. ❌ FRONTEND DATA PARSING ISSUE: React component receives API data but fails to display it in table - shows 'No suppliers match the current filters' despite no active filters. ❌ Metric cards show 0 suppliers, 0.0% impact, confirming data not reaching component state. ❌ Cannot test deep dive panel, evidence excerpts, or heatmap functionality due to empty table. 🔍 ROOT CAUSE: React state management issue where API response data is not properly setting the suppliers state in ReduceDashboard component. The frontend code appears correct (lines 116-118 handle both array and object formats), but data is not persisting in component state. URGENT FIX NEEDED: Debug React component state management in ReduceDashboard.jsx fetchFilteredSuppliers function."
 ##   - task: "Module navigation (Measure/Reduce/Engage/Report)"
 ##     implemented: true
 ##     working: "true"
