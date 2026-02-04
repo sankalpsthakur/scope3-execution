@@ -1,70 +1,118 @@
 {
   "summary": {
-    "tests_run": 10,
-    "tests_passed": 7,
-    "success_rate": 70.0,
-    "timestamp": "2026-02-04T19:16:00.564727"
+    "tests_run": 18,
+    "tests_passed": 18,
+    "success_rate": 100.0,
+    "timestamp": "2026-02-04T19:16:49.581428"
   },
   "results": [
     {
       "test": "Root Endpoint",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:16:00.172513"
+      "timestamp": "2026-02-04T19:16:26.372873"
     },
     {
       "test": "Health Check",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:16:00.207475"
+      "timestamp": "2026-02-04T19:16:26.411415"
     },
     {
       "test": "Seed Mock Data",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:16:00.263520"
+      "timestamp": "2026-02-04T19:16:26.448641"
     },
     {
       "test": "Auth Me (No Token)",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:16:00.337389"
+      "timestamp": "2026-02-04T19:16:26.522512"
     },
     {
       "test": "Auth Me (Invalid Token)",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:16:00.375778"
+      "timestamp": "2026-02-04T19:16:26.557816"
     },
     {
       "test": "Logout",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:16:00.412000"
+      "timestamp": "2026-02-04T19:16:26.590840"
     },
     {
       "test": "Get Suppliers (No Auth)",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:16:00.448128"
+      "timestamp": "2026-02-04T19:16:26.627187"
     },
     {
       "test": "Get Suppliers (With Auth)",
-      "success": false,
-      "details": "Expected 200, got 401 - {'detail': 'Invalid session'}",
-      "timestamp": "2026-02-04T19:16:00.486592"
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:26.661183"
+    },
+    {
+      "test": "Get Deep Dive",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:33.838401"
+    },
+    {
+      "test": "Deep Dive Structure",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:33.839060"
+    },
+    {
+      "test": "AI Content Generation",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:33.839068"
+    },
+    {
+      "test": "Get Heatmap Data",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:33.909104"
     },
     {
       "test": "Get Deep Dive (Invalid ID)",
-      "success": false,
-      "details": "Expected 404, got 401 - {'detail': 'Invalid session'}",
-      "timestamp": "2026-02-04T19:16:00.529803"
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:33.946418"
     },
     {
       "test": "Get Suppliers for AI Test",
-      "success": false,
-      "details": "Expected 200, got 401 - {'detail': 'Invalid session'}",
-      "timestamp": "2026-02-04T19:16:00.563820"
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:33.983251"
+    },
+    {
+      "test": "AI Generation - PPG Industries",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:36.021801"
+    },
+    {
+      "test": "AI Generation - UPS Logistics",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:42.953577"
+    },
+    {
+      "test": "AI Generation - Dow Chemical",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:49.580516"
+    },
+    {
+      "test": "AI Integration Overall",
+      "success": true,
+      "details": "100.0% success rate",
+      "timestamp": "2026-02-04T19:16:49.581147"
     }
   ]
 }
