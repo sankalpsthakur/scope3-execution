@@ -1,0 +1,70 @@
+{
+  "summary": {
+    "tests_run": 10,
+    "tests_passed": 7,
+    "success_rate": 70.0,
+    "timestamp": "2026-02-04T19:16:00.564727"
+  },
+  "results": [
+    {
+      "test": "Root Endpoint",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:00.172513"
+    },
+    {
+      "test": "Health Check",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:00.207475"
+    },
+    {
+      "test": "Seed Mock Data",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:00.263520"
+    },
+    {
+      "test": "Auth Me (No Token)",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:00.337389"
+    },
+    {
+      "test": "Auth Me (Invalid Token)",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:00.375778"
+    },
+    {
+      "test": "Logout",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:00.412000"
+    },
+    {
+      "test": "Get Suppliers (No Auth)",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T19:16:00.448128"
+    },
+    {
+      "test": "Get Suppliers (With Auth)",
+      "success": false,
+      "details": "Expected 200, got 401 - {'detail': 'Invalid session'}",
+      "timestamp": "2026-02-04T19:16:00.486592"
+    },
+    {
+      "test": "Get Deep Dive (Invalid ID)",
+      "success": false,
+      "details": "Expected 404, got 401 - {'detail': 'Invalid session'}",
+      "timestamp": "2026-02-04T19:16:00.529803"
+    },
+    {
+      "test": "Get Suppliers for AI Test",
+      "success": false,
+      "details": "Expected 200, got 401 - {'detail': 'Invalid session'}",
+      "timestamp": "2026-02-04T19:16:00.563820"
+    }
+  ]
+}
