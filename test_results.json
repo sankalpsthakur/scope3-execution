@@ -1,244 +1,244 @@
 {
   "summary": {
     "tests_run": 39,
-    "tests_passed": 39,
-    "success_rate": 100.0,
-    "timestamp": "2026-02-04T19:34:34.418316"
+    "tests_passed": 38,
+    "success_rate": 97.43589743589743,
+    "timestamp": "2026-02-04T20:47:27.542821"
   },
   "results": [
     {
       "test": "Root Endpoint",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:09.349788"
+      "timestamp": "2026-02-04T20:47:05.446440"
     },
     {
       "test": "Health Check",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:09.383775"
+      "timestamp": "2026-02-04T20:47:05.483867"
     },
     {
       "test": "Seed Mock Data",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:09.422775"
+      "timestamp": "2026-02-04T20:47:05.544637"
     },
     {
       "test": "Auth Me (No Token)",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:09.459421"
+      "timestamp": "2026-02-04T20:47:05.581579"
     },
     {
       "test": "Auth Me (Invalid Token)",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:09.500157"
+      "timestamp": "2026-02-04T20:47:05.623264"
     },
     {
       "test": "Logout",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:09.532694"
+      "timestamp": "2026-02-04T20:47:05.660097"
     },
     {
       "test": "Get Suppliers (No Auth)",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:09.567866"
+      "timestamp": "2026-02-04T20:47:05.697739"
     },
     {
       "test": "Get Suppliers (With Auth)",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:09.610053"
+      "timestamp": "2026-02-04T20:47:05.745865"
     },
     {
       "test": "Get Deep Dive",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.015676"
+      "timestamp": "2026-02-04T20:47:12.675831"
     },
     {
       "test": "Deep Dive Structure",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.016397"
+      "timestamp": "2026-02-04T20:47:12.676546"
     },
     {
       "test": "AI Content Generation",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.016411"
+      "timestamp": "2026-02-04T20:47:12.676555"
     },
     {
       "test": "Get Heatmap Data",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.078057"
+      "timestamp": "2026-02-04T20:47:12.742511"
     },
     {
       "test": "Get Deep Dive (Invalid ID)",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.120147"
+      "timestamp": "2026-02-04T20:47:12.785664"
     },
     {
       "test": "Get Filtered Suppliers (No Filters)",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.160050"
+      "timestamp": "2026-02-04T20:47:12.831862"
     },
     {
       "test": "Filter by Category (Transport)",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.199761"
+      "timestamp": "2026-02-04T20:47:12.867551"
     },
     {
       "test": "Category Filter Validation",
-      "success": true,
-      "details": "Correct count for Transport & Distribution",
-      "timestamp": "2026-02-04T19:34:17.200513"
+      "success": false,
+      "details": "Expected 3, got 1",
+      "timestamp": "2026-02-04T20:47:12.868203"
     },
     {
       "test": "Filter by Rating (C)",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.236951"
+      "timestamp": "2026-02-04T20:47:12.905245"
     },
     {
       "test": "Rating Filter Validation",
       "success": true,
-      "details": "All 5 suppliers are C-rated",
-      "timestamp": "2026-02-04T19:34:17.237584"
+      "details": "All 3 suppliers are C-rated",
+      "timestamp": "2026-02-04T20:47:12.905853"
     },
     {
       "test": "Filter by Min Impact (3%)",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.276185"
+      "timestamp": "2026-02-04T20:47:12.941573"
     },
     {
       "test": "Min Impact Filter Validation",
       "success": true,
-      "details": "All 3 suppliers have >=3% impact",
-      "timestamp": "2026-02-04T19:34:17.276804"
+      "details": "All 2 suppliers have >=3% impact",
+      "timestamp": "2026-02-04T20:47:12.942420"
     },
     {
       "test": "Filter by Min Reduction (25%)",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.316043"
+      "timestamp": "2026-02-04T20:47:12.980504"
     },
     {
       "test": "Combined Filters",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.353668"
+      "timestamp": "2026-02-04T20:47:13.021794"
     },
     {
       "test": "Get All Engagements",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.388022"
+      "timestamp": "2026-02-04T20:47:13.061432"
     },
     {
       "test": "Get Suppliers for Engagement Test",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.426626"
+      "timestamp": "2026-02-04T20:47:13.095407"
     },
     {
       "test": "Get Specific Engagement",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.466399"
+      "timestamp": "2026-02-04T20:47:13.137328"
     },
     {
       "test": "Update Engagement Status",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.501372"
+      "timestamp": "2026-02-04T20:47:13.178059"
     },
     {
       "test": "Engagement Status Update",
       "success": true,
       "details": "Status updated to in_progress",
-      "timestamp": "2026-02-04T19:34:17.502046"
+      "timestamp": "2026-02-04T20:47:13.178727"
     },
     {
       "test": "Update to pending_response",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.538729"
+      "timestamp": "2026-02-04T20:47:13.220479"
     },
     {
       "test": "Update to completed",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.577519"
+      "timestamp": "2026-02-04T20:47:13.257002"
     },
     {
       "test": "Update to on_hold",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.614129"
+      "timestamp": "2026-02-04T20:47:13.294989"
     },
     {
       "test": "Update to not_started",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.647777"
+      "timestamp": "2026-02-04T20:47:13.334380"
     },
     {
       "test": "Get Suppliers for PDF Test",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.683433"
+      "timestamp": "2026-02-04T20:47:13.375498"
     },
     {
       "test": "PDF Export",
       "success": true,
-      "details": "PDF generated successfully (5026 bytes)",
-      "timestamp": "2026-02-04T19:34:17.736280"
+      "details": "PDF generated successfully (4373 bytes)",
+      "timestamp": "2026-02-04T20:47:13.574768"
     },
     {
       "test": "PDF Export (Invalid ID)",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.771123"
+      "timestamp": "2026-02-04T20:47:13.616009"
     },
     {
       "test": "Get Suppliers for AI Test",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:17.808990"
+      "timestamp": "2026-02-04T20:47:13.654767"
     },
     {
       "test": "AI Generation - PPG Industries",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:19.845350"
+      "timestamp": "2026-02-04T20:47:15.692511"
     },
     {
       "test": "AI Generation - UPS Logistics",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:27.220201"
+      "timestamp": "2026-02-04T20:47:22.187167"
     },
     {
-      "test": "AI Generation - Dow Chemical",
+      "test": "AI Generation - Dow Inc",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T19:34:34.417375"
+      "timestamp": "2026-02-04T20:47:27.541901"
     },
     {
       "test": "AI Integration Overall",
       "success": true,
       "details": "100.0% success rate",
-      "timestamp": "2026-02-04T19:34:34.418007"
+      "timestamp": "2026-02-04T20:47:27.542560"
     }
   ]
 }
