@@ -444,7 +444,7 @@ export default function ReduceDashboard({ onGoToEngage }) {
                     onClick={() => handleSort("category")}
                   >
                     <div className="flex items-center">
-                      Category<SortIcon column="category" />
+                      Category<SortIcon sortConfig={sortConfig} column="category" />
                     </div>
                   </TableHead>
                   <TableHead
