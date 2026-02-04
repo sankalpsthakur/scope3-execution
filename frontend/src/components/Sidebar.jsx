@@ -1,8 +1,13 @@
-import { 
-  Leaf, BarChart3, TrendingDown, Users, Settings, LogOut, 
-  ChevronDown
+import {
+  Leaf,
+  BarChart3,
+  TrendingDown,
+  Users,
+  FileText,
+  Settings,
+  LogOut,
+  ChevronDown,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -11,10 +16,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-export const Sidebar = ({ user, onLogout }) => {
-  const [activeItem, setActiveItem] = useState("reduce");
+export const Sidebar = ({ user, onLogout, activeItem, onNavigate }) => {
+  const [active, setActive] = useState(activeItem || "reduce");
+
+  useEffect(() => {
+    if (activeItem) setActive(activeItem);
+  }, [activeItem]);
+
+  const navTo = (key) => {
+    setActive(key);
+    if (onNavigate) onNavigate(key);
+  };
 
   return (
     <aside className="w-64 bg-[#121212] border-r border-white/10 flex flex-col h-screen fixed left-0 top-0">
@@ -24,9 +38,7 @@ export const Sidebar = ({ user, onLogout }) => {
             <Leaf className="w-5 h-5 text-[#22C55E]" />
           </div>
           <div>
-            <span className="font-display text-lg font-bold tracking-tight text-white block">
-              SCOPE3
-            </span>
+            <span className="font-display text-lg font-bold tracking-tight text-white block">SCOPE3</span>
             <span className="text-xs text-gray-500 uppercase tracking-wider">Carbon Intelligence</span>
           </div>
         </div>
@@ -37,16 +49,16 @@ export const Sidebar = ({ user, onLogout }) => {
           <span className="text-xs text-gray-500 uppercase tracking-wider px-3 mb-2 block">Modules</span>
           <div className="space-y-1">
             <button
-              onClick={() => setActiveItem("measure")}
-              className={`sidebar-item w-full text-left ${activeItem === "measure" ? "active" : ""}`}
+              onClick={() => navTo("measure")}
+              className={`sidebar-item w-full text-left ${active === "measure" ? "active" : ""}`}
               data-testid="nav-measure"
             >
               <BarChart3 className="w-4 h-4" />
               <span>Measure</span>
             </button>
             <button
-              onClick={() => setActiveItem("reduce")}
-              className={`sidebar-item w-full text-left ${activeItem === "reduce" ? "active" : ""}`}
+              onClick={() => navTo("reduce")}
+              className={`sidebar-item w-full text-left ${active === "reduce" ? "active" : ""}`}
               data-testid="nav-reduce"
             >
               <TrendingDown className="w-4 h-4" />
@@ -54,12 +66,20 @@ export const Sidebar = ({ user, onLogout }) => {
               <Badge className="ml-auto bg-[#22C55E]/20 text-[#22C55E] border-0 text-[10px]">AI</Badge>
             </button>
             <button
-              onClick={() => setActiveItem("engage")}
-              className={`sidebar-item w-full text-left ${activeItem === "engage" ? "active" : ""}`}
+              onClick={() => navTo("engage")}
+              className={`sidebar-item w-full text-left ${active === "engage" ? "active" : ""}`}
               data-testid="nav-engage"
             >
               <Users className="w-4 h-4" />
               <span>Engage</span>
+            </button>
+            <button
+              onClick={() => navTo("report")}
+              className={`sidebar-item w-full text-left ${active === "report" ? "active" : ""}`}
+              data-testid="nav-report"
+            >
+              <FileText className="w-4 h-4" />
+              <span>Report</span>
             </button>
           </div>
         </div>
@@ -68,14 +88,15 @@ export const Sidebar = ({ user, onLogout }) => {
       <div className="p-4 border-t border-white/10">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors" data-testid="user-menu-trigger">
+            <button
+              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors"
+              data-testid="user-menu-trigger"
+            >
               <div className="w-9 h-9 rounded-full bg-[#22C55E]/20 flex items-center justify-center overflow-hidden">
                 {user?.picture ? (
                   <img src={user.picture} alt={user.name} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-[#22C55E] font-semibold text-sm">
-                    {user?.name?.charAt(0) || "U"}
-                  </span>
+                  <span className="text-[#22C55E] font-semibold text-sm">{user?.name?.charAt(0) || "U"}</span>
                 )}
               </div>
               <div className="flex-1 text-left">
@@ -91,7 +112,7 @@ export const Sidebar = ({ user, onLogout }) => {
               Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-white/10" />
-            <DropdownMenuItem 
+            <DropdownMenuItem
               className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
               onClick={onLogout}
               data-testid="logout-btn"
