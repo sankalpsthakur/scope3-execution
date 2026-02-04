@@ -278,52 +278,16 @@ async def get_suppliers(request: Request):
 
 @api_router.get("/suppliers/{supplier_id}/deep-dive")
 async def get_supplier_deep_dive(supplier_id: str, request: Request):
-    """Get detailed AI recommendation for a supplier"""
+    """Get detailed AI recommendation for a supplier (legacy endpoint)."""
     await get_user_from_request(request)
-    
-    # Get benchmark data
-    benchmark = await db.supplier_benchmarks.find_one(
-        {"id": supplier_id},
-        {"_id": 0}
-    )
-    
+
+    benchmark = await get_benchmark_by_supplier_identifier(supplier_id)
     if not benchmark:
         raise HTTPException(status_code=404, detail="Supplier not found")
-    
-    # Get recommendation content
-    recommendation = await db.recommendation_content.find_one(
-        {"benchmark_id": supplier_id},
-        {"_id": 0}
-    )
-    
-    if not recommendation:
-        # Generate AI recommendation if not cached
-        recommendation = await generate_ai_recommendation(benchmark)
-    
-    return {
-        "meta": {
-            "supplier_name": benchmark["supplier_name"],
-            "peer_name": benchmark["peer_name"],
-            "comparison_year": "2024",
-            "industry_sector": benchmark["industry_sector"],
-            "category": benchmark["category"]
-        },
-        "metrics": {
-            "current_intensity": benchmark["supplier_intensity"],
-            "target_intensity": benchmark["peer_intensity"],
-            "reduction_potential_percentage": benchmark["potential_reduction_pct"],
-            "upstream_impact_percentage": benchmark["upstream_impact_pct"],
-            "cee_rating": benchmark["cee_rating"]
-        },
-        "content": {
-            "headline": recommendation["headline"],
-            "action_plan": recommendation["action_plan"],
-            "case_study_summary": recommendation["case_study_summary"],
-            "contract_clause": recommendation["contract_clause"],
-            "feasibility_timeline": recommendation["feasibility_timeline"],
-            "source_docs": recommendation["source_citations"]
-        }
-    }
+
+    recommendation = await get_or_generate_recommendation(benchmark)
+
+    return build_deep_dive_response(benchmark, recommendation)
 
 async def generate_ai_recommendation(benchmark: dict) -> dict:
     """Generate AI recommendation using Gemini 3 Flash"""
@@ -360,6 +324,187 @@ PEER (Leader): {benchmark['peer_name']} (Intensity: {benchmark['peer_intensity']
 CATEGORY: {benchmark['category']}
 INDUSTRY: {benchmark['industry_sector']}
 REDUCTION POTENTIAL: {benchmark['potential_reduction_pct']}%
+
+
+# ==================== DEEP DIVE HELPERS + V1 ENDPOINT ====================
+
+async def get_benchmark_by_supplier_identifier(supplier_identifier: str) -> Optional[dict]:
+    """Resolve supplier identifier to a benchmark.
+
+    Accepts either:
+    - benchmark.id (what the current frontend uses)
+    - benchmark.supplier_id (what the tech spec calls supplierId)
+    """
+    benchmark = await db.supplier_benchmarks.find_one({"id": supplier_identifier}, {"_id": 0})
+    if benchmark:
+        return benchmark
+    return await db.supplier_benchmarks.find_one({"supplier_id": supplier_identifier}, {"_id": 0})
+
+
+async def build_evidence_context(peer_id: str, category: str) -> tuple[str, list[dict]]:
+    """Retrieve mock 'scraped' evidence chunks for the peer and category."""
+    chunks = await db.disclosure_chunks.find(
+        {"company_id": peer_id, "category": category},
+        {"_id": 0}
+    ).sort("page", 1).to_list(20)
+
+    if not chunks:
+        return "", []
+
+    context_lines = []
+    citations = []
+    for c in chunks:
+        page = c.get("page")
+        context_lines.append(f"[Pg {page}] {c.get('excerpt', '').strip()}")
+        citations.append({
+            "title": c.get("title", "Sustainability Report"),
+            "url": c.get("url", ""),
+            "page": str(page) if page is not None else "",
+            "quote": c.get("excerpt", "")
+        })
+
+    return "\n\n".join(context_lines), citations
+
+
+def build_generic_recommendation_template(benchmark: dict, reason: str) -> dict:
+    supplier = benchmark.get("supplier_name", "Supplier")
+    peer = benchmark.get("peer_name", "Peer")
+    category = benchmark.get("category", "Scope 3")
+
+    if reason == "missing_public_report":
+        headline = f"No public sustainability report could be retrieved for {peer} in {category}."
+        case_study = (
+            f"We could not retrieve a public report for {peer} to provide peer-validated steps. "
+            "To proceed, request primary data from your supplier and ask for a category-specific reduction roadmap."
+        )
+    else:
+        headline = f"Insufficient evidence in the retrieved context to produce a peer-validated action plan for {category}."
+        case_study = (
+            f"We retrieved limited disclosures for {peer}, but did not find explicit, technical actions tied to {category}. "
+            "Ask your supplier for a detailed abatement plan and supporting documentation."
+        )
+
+    contract_clause = (
+        "Supplier shall, within ninety (90) days of the Effective Date, deliver to Customer a category-specific "
+        "Scope 3 emissions reduction plan (including baselines, measures, milestones, and reporting cadence) and "
+        "thereafter report progress quarterly. Failure to provide such plan or reports shall constitute a material breach."
+    )
+
+    return {
+        "benchmark_id": benchmark["id"],
+        "headline": headline,
+        "action_plan": None,
+        "case_study_summary": case_study,
+        "contract_clause": contract_clause,
+        "feasibility_timeline": "4-12 weeks to produce plan; 12-36 months to implement",
+        "source_citations": [],
+        "evidence_status": reason,
+        "generated_at": datetime.now(timezone.utc).isoformat()
+    }
+
+
+async def get_or_generate_recommendation(benchmark: dict) -> dict:
+    """Fetch cached recommendation; otherwise generate using mock evidence context + LLM guardrails."""
+    cached = await db.recommendation_content.find_one({"benchmark_id": benchmark["id"]}, {"_id": 0})
+    if cached:
+        return cached
+
+    raw_context, citations = await build_evidence_context(benchmark["peer_id"], benchmark["category"])
+    if not raw_context.strip():
+        return build_generic_recommendation_template(benchmark, "missing_public_report")
+
+    recommendation = await generate_ai_recommendation(
+        benchmark=benchmark,
+        raw_text_context=raw_context,
+        source_citations=citations
+    )
+
+    # Cache (upsert)
+    await db.recommendation_content.replace_one(
+        {"benchmark_id": benchmark["id"]},
+        {**recommendation, "benchmark_id": benchmark["id"]},
+        upsert=True
+    )
+    return recommendation
+
+
+def build_deep_dive_response(benchmark: dict, recommendation: dict) -> dict:
+    source_docs = []
+    for c in recommendation.get("source_citations", []) or []:
+        source_docs.append({
+            "title": c.get("title", "Source"),
+            "url": c.get("url", ""),
+            "page": c.get("page", "")
+        })
+
+    return {
+        "meta": {
+            "supplier_name": benchmark["supplier_name"],
+            "peer_name": benchmark["peer_name"],
+            "comparison_year": str(benchmark.get("comparison_year", "2024")),
+            "industry_sector": benchmark.get("industry_sector"),
+            "category": benchmark["category"],
+            "isic_code": benchmark.get("isic_code"),
+            "revenue_band": benchmark.get("revenue_band")
+        },
+        "metrics": {
+            "current_intensity": benchmark["supplier_intensity"],
+            "target_intensity": benchmark["peer_intensity"],
+            "reduction_potential_percentage": benchmark["potential_reduction_pct"],
+            "upstream_impact_percentage": benchmark["upstream_impact_pct"],
+            "cee_rating": benchmark["cee_rating"]
+        },
+        "content": {
+            "headline": recommendation.get("headline", ""),
+            "action_plan": recommendation.get("action_plan"),
+            "case_study_summary": recommendation.get("case_study_summary", ""),
+            "contract_clause": recommendation.get("contract_clause", ""),
+            "feasibility_timeline": recommendation.get("feasibility_timeline", "24-36 months"),
+            "source_docs": source_docs,
+            "source_citations": recommendation.get("source_citations", []),
+            "evidence_status": recommendation.get("evidence_status", "ok")
+        }
+    }
+
+
+@api_router.get("/v1/recommendations/supplier/{supplier_id}/deep-dive")
+async def get_supplier_deep_dive_v1(supplier_id: str, request: Request):
+    """Tech-spec endpoint: returns the PRD/Spec JSON contract."""
+    await get_user_from_request(request)
+
+    benchmark = await get_benchmark_by_supplier_identifier(supplier_id)
+    if not benchmark:
+        raise HTTPException(status_code=404, detail="Supplier not found")
+
+    recommendation = await get_or_generate_recommendation(benchmark)
+
+    # Strict contract response (matches the engineering handover)
+    source_docs = []
+    for c in recommendation.get("source_citations", []) or []:
+        if c.get("url"):
+            source_docs.append({
+                "title": c.get("title", "Sustainability Report"),
+                "url": c.get("url")
+            })
+
+    return {
+        "meta": {
+            "supplier_name": benchmark["supplier_name"],
+            "peer_name": benchmark["peer_name"],
+            "comparison_year": str(benchmark.get("comparison_year", "2024"))
+        },
+        "metrics": {
+            "current_intensity": benchmark["supplier_intensity"],
+            "target_intensity": benchmark["peer_intensity"],
+            "reduction_potential_percentage": benchmark["potential_reduction_pct"]
+        },
+        "content": {
+            "headline": recommendation.get("headline", ""),
+            "action_plan": recommendation.get("action_plan"),
+            "contract_clause": recommendation.get("contract_clause", ""),
+            "source_docs": source_docs
+        }
+    }
 
 The peer achieved a {benchmark['potential_reduction_pct']}% reduction. Generate specific technical actions they likely took based on industry best practices."""
 
