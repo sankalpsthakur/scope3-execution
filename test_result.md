@@ -142,11 +142,11 @@
 ## frontend:
 ##   - task: "Reduce dashboard server-side filtering + evidence excerpts UI"
 ##     implemented: true
-##     working: true
+##     working: false
 ##     file: "/app/frontend/src/pages/ReduceDashboard.jsx"
-##     stuck_count: 0
+##     stuck_count: 1
 ##     priority: "high"
-##     needs_retesting: false
+##     needs_retesting: true
 ##     status_history:
 ##       - working: "NA"
 ##         agent: "main"
@@ -157,6 +157,9 @@
 ##       - working: true
 ##         agent: "testing"
 ##         comment: "ITERATION 3 FRONTEND E2E TESTING COMPLETED: ✅ Successfully authenticated using test session token (test_session_1770238549883). ✅ Dashboard loads with suppliers table showing 10 suppliers, default sort by Upstream Impact desc verified. ✅ Filters popover works correctly - Category, Rating, Min Impact, Min Reduction filters all functional and properly filter results. ✅ Heatmap view mode switches correctly. ✅ Deep dive panel opens with all required sections: Narrative block, Recommended Actions, Sources with page numbers, Evidence Excerpts with quotes. ✅ Copy Clause button works and shows 'Copied' state after click. ✅ Export PDF initiates download with correct content-type (application/pdf). ✅ Engage button navigates correctly to /dashboard/engage. All core Reduce module functionality working as specified."
+##       - working: false
+##         agent: "testing"
+##         comment: "CRITICAL REGRESSION: Reduce table completely empty (0 suppliers) after multi-tenant partitioning updates. Frontend UI loads correctly but backend returns no data. Root cause: seed_mock_data() function uses hardcoded measure_user_id='_global_demo' but test user data is partitioned under different user_id. This breaks upstream_impact_pct calculation causing all suppliers to be filtered out by upstream_impact_pct > 0 condition. Deep dive and PDF export cannot be tested due to empty table."
 ##   - task: "Module navigation (Measure/Reduce/Engage/Report)"
 ##     implemented: true
 ##     working: true
