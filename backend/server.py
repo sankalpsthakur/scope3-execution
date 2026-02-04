@@ -173,6 +173,7 @@ async def create_session(request: Request, response: Response):
         raise
     except Exception as e:
         logger.error(f"Session creation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.post("/auth/test-login")
