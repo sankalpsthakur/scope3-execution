@@ -272,7 +272,6 @@ async def build_evidence_context(peer_id: str, category: str) -> Tuple[str, List
 
 
 def build_generic_recommendation_template(benchmark: dict, reason: str) -> dict:
-    supplier = benchmark.get("supplier_name", "Supplier")
     peer = benchmark.get("peer_name", "Peer")
     category = benchmark.get("category", "Scope 3")
 
