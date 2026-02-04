@@ -211,7 +211,8 @@
 ##     - "Reduce dashboard server-side filtering + evidence excerpts UI"
 ##     - "Module navigation (Measure/Reduce/Engage/Report)"
 ##     - "New Measure module with baseline inventory and metrics"
-##   stuck_tasks: []
+##   stuck_tasks:
+##     - "Reduce dashboard server-side filtering + evidence excerpts UI"
 ##   test_all: true
 ##   test_priority: "high_first"
 ##
