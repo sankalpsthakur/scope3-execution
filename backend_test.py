@@ -452,6 +452,145 @@ class Scope3ReduceAPITester:
             else:
                 self.log_test("AI Integration Overall", False, f"Only {ai_success_rate:.1f}% success rate")
 
+    def test_regression_after_measure_integration(self):
+        """Regression test after Measure integration and pipeline changes"""
+        print("\n" + "="*50)
+        print("REGRESSION TEST: MEASURE INTEGRATION & PIPELINE")
+        print("="*50)
+        
+        # Step 1: Authenticate via test session token bypass
+        print("\n🔐 Step 1: Authentication via test session token bypass")
+        self.session_token = "test_session_1770238549883"
+        print(f"   Using test session token: {self.session_token}")
+        
+        # Step 2: Run pipeline/run (POST)
+        print("\n⚙️ Step 2: Running pipeline")
+        success, pipeline_response = self.run_test("POST Pipeline Run", "POST", "pipeline/run", 200)
+        if not success:
+            print("❌ Pipeline run failed - cannot continue regression test")
+            return False
+        
+        print(f"   Pipeline response: {pipeline_response.get('message', 'No message')}")
+        
+        # Step 3: GET /api/suppliers
+        print("\n📊 Step 3: Getting suppliers list")
+        success, suppliers_data = self.run_test("GET Suppliers", "GET", "suppliers", 200)
+        if not success:
+            print("❌ Suppliers endpoint failed")
+            return False
+        
+        suppliers = suppliers_data.get('suppliers', [])
+        print(f"   Found {len(suppliers)} suppliers")
+        
+        # Validation: Confirm suppliers list is non-empty and has upstream_impact_pct > 0
+        if not suppliers:
+            self.log_test("Suppliers Non-Empty Validation", False, "Suppliers list is empty")
+            return False
+        else:
+            self.log_test("Suppliers Non-Empty Validation", True, f"Found {len(suppliers)} suppliers")
+        
+        # Check upstream_impact_pct > 0 for shown suppliers
+        suppliers_with_impact = [s for s in suppliers if s.get('upstream_impact_pct', 0) > 0]
+        if len(suppliers_with_impact) == len(suppliers):
+            self.log_test("Upstream Impact Validation", True, f"All {len(suppliers)} suppliers have upstream_impact_pct > 0")
+        else:
+            self.log_test("Upstream Impact Validation", False, f"Only {len(suppliers_with_impact)}/{len(suppliers)} suppliers have upstream_impact_pct > 0")
+        
+        # Step 4: GET /api/suppliers/filter (no params)
+        print("\n🔍 Step 4: Getting filtered suppliers (no params)")
+        success, filter_data = self.run_test("GET Suppliers Filter", "GET", "suppliers/filter", 200)
+        if not success:
+            print("❌ Suppliers filter endpoint failed")
+            return False
+        
+        filtered_suppliers = filter_data.get('suppliers', [])
+        print(f"   Filtered suppliers: {len(filtered_suppliers)}")
+        
+        # Step 5: GET /api/measure/overview
+        print("\n📈 Step 5: Getting measure overview")
+        success, measure_data = self.run_test("GET Measure Overview", "GET", "measure/overview", 200)
+        if not success:
+            print("❌ Measure overview endpoint failed")
+            return False
+        
+        # Validation: Confirm total_upstream_tco2e > 0 and coverage_pct > 0
+        total_upstream_tco2e = measure_data.get('total_upstream_tco2e', 0)
+        coverage_pct = measure_data.get('coverage_pct', 0)
+        
+        print(f"   Total upstream tCO2e: {total_upstream_tco2e}")
+        print(f"   Coverage %: {coverage_pct}")
+        
+        if total_upstream_tco2e > 0:
+            self.log_test("Measure Total Upstream Validation", True, f"total_upstream_tco2e = {total_upstream_tco2e}")
+        else:
+            self.log_test("Measure Total Upstream Validation", False, f"total_upstream_tco2e = {total_upstream_tco2e} (should be > 0)")
+        
+        if coverage_pct > 0:
+            self.log_test("Measure Coverage Validation", True, f"coverage_pct = {coverage_pct}%")
+        else:
+            self.log_test("Measure Coverage Validation", False, f"coverage_pct = {coverage_pct}% (should be > 0)")
+        
+        # Step 6: GET /api/suppliers/{id}/deep-dive (pick first supplier)
+        if suppliers:
+            first_supplier = suppliers[0]
+            supplier_id = first_supplier.get('id')
+            supplier_name = first_supplier.get('supplier_name')
+            
+            print(f"\n🔬 Step 6: Getting deep dive for first supplier: {supplier_name}")
+            success, deep_dive_data = self.run_test("GET Deep Dive", "GET", f"suppliers/{supplier_id}/deep-dive", 200)
+            if not success:
+                print("❌ Deep dive endpoint failed")
+                return False
+            
+            # Validate deep dive structure
+            required_sections = ['meta', 'metrics', 'content']
+            missing_sections = [section for section in required_sections if section not in deep_dive_data]
+            
+            if not missing_sections:
+                self.log_test("Deep Dive Structure Validation", True, "All required sections present")
+                
+                # Check content quality
+                content = deep_dive_data.get('content', {})
+                evidence_status = content.get('evidence_status', 'unknown')
+                print(f"   Evidence status: {evidence_status}")
+                
+                if content.get('headline'):
+                    print(f"   Headline: {content['headline'][:100]}...")
+                
+            else:
+                self.log_test("Deep Dive Structure Validation", False, f"Missing sections: {missing_sections}")
+            
+            # Step 7: GET /api/suppliers/{id}/export-pdf
+            print(f"\n📄 Step 7: Testing PDF export for: {supplier_name}")
+            
+            url = f"{self.api_url}/suppliers/{supplier_id}/export-pdf"
+            headers = {'Authorization': f'Bearer {self.session_token}'}
+            
+            try:
+                response = requests.get(url, headers=headers, timeout=30)
+                
+                if response.status_code == 200:
+                    content_type = response.headers.get('content-type', '')
+                    content_length = len(response.content)
+                    
+                    if 'application/pdf' in content_type and content_length > 1000:
+                        self.log_test("PDF Export Validation", True, f"PDF generated successfully ({content_length} bytes)")
+                        print(f"   PDF size: {content_length} bytes")
+                    else:
+                        self.log_test("PDF Export Validation", False, f"Invalid PDF: {content_type}, {content_length} bytes")
+                else:
+                    self.log_test("PDF Export Validation", False, f"HTTP {response.status_code}")
+                    
+            except Exception as e:
+                self.log_test("PDF Export Validation", False, f"Request failed: {str(e)}")
+        
+        else:
+            print("❌ No suppliers available for deep dive and PDF export tests")
+            return False
+        
+        print("\n✅ Regression test sequence completed")
+        return True
+
     def run_all_tests(self):
         """Run all test suites"""
         print("🚀 Starting Scope 3 Reduce API Testing")
@@ -493,6 +632,32 @@ class Scope3ReduceAPITester:
         
         # Return success if > 80% pass rate
         return (self.tests_passed / self.tests_run) >= 0.8
+
+    def run_regression_test_only(self):
+        """Run only the regression test for Measure integration"""
+        print("🚀 Starting Regression Test for Measure Integration")
+        print(f"Backend URL: {self.base_url}")
+        print(f"API URL: {self.api_url}")
+        
+        start_time = time.time()
+        
+        # Run the specific regression test
+        success = self.test_regression_after_measure_integration()
+        
+        # Print summary
+        end_time = time.time()
+        duration = end_time - start_time
+        
+        print("\n" + "="*60)
+        print("REGRESSION TEST SUMMARY")
+        print("="*60)
+        print(f"Tests Run: {self.tests_run}")
+        print(f"Tests Passed: {self.tests_passed}")
+        print(f"Tests Failed: {self.tests_run - self.tests_passed}")
+        print(f"Success Rate: {(self.tests_passed/self.tests_run)*100:.1f}%")
+        print(f"Duration: {duration:.2f} seconds")
+        
+        return success
 
 def main():
     """Main test runner"""
