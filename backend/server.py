@@ -314,6 +314,8 @@ _rate_state: Dict[str, List[float]] = {}
 
 
 def _rate_limit(key: str, limit: int, window_seconds: int = 60) -> None:
+    """DEPRECATED: in-memory rate limiter (kept for reference)."""
+    return
 
 
 # ==================== EPIC D (MVP): INGESTION + CHUNKING + "VECTOR" STORE ====================
