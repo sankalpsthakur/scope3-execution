@@ -16,17 +16,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useEffect, useState } from "react";
 
 export const Sidebar = ({ user, onLogout, activeItem, onNavigate }) => {
-  const [active, setActive] = useState(activeItem || "reduce");
-
-  useEffect(() => {
-    if (activeItem) setActive(activeItem);
-  }, [activeItem]);
+  const active = activeItem || "reduce";
 
   const navTo = (key) => {
-    setActive(key);
     if (onNavigate) onNavigate(key);
   };
 

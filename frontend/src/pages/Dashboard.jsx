@@ -18,15 +18,14 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [activeModule, setActiveModule] = useState("reduce");
   const [engageFocusSupplierId, setEngageFocusSupplierId] = useState(null);
 
-  useEffect(() => {
+  const activeModule = useMemo(() => {
     const path = location.pathname;
-    if (path.startsWith("/dashboard/engage")) setActiveModule("engage");
-    else if (path.startsWith("/dashboard/measure")) setActiveModule("measure");
-    else if (path.startsWith("/dashboard/report")) setActiveModule("report");
-    else setActiveModule("reduce");
+    if (path.startsWith("/dashboard/engage")) return "engage";
+    if (path.startsWith("/dashboard/measure")) return "measure";
+    if (path.startsWith("/dashboard/report")) return "report";
+    return "reduce";
   }, [location.pathname]);
 
   const handleLogout = async () => {

@@ -42,6 +42,15 @@ import {
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+const SortIcon = ({ sortConfig, column }) => {
+  if (sortConfig.key !== column) return null;
+  return sortConfig.direction === "desc" ? (
+    <ChevronDown className="w-3 h-3 ml-1" />
+  ) : (
+    <ChevronUp className="w-3 h-3 ml-1" />
+  );
+};
+
 export default function ReduceDashboard({ onGoToEngage }) {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
