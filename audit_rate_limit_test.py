@@ -42,10 +42,8 @@ class AuditRateLimitTester:
         """Step 1: Authenticate using test session token"""
         print("\n🔐 Step 1: Authenticating with test session token")
         
-        # Generate a unique test session token
-        import random
-        session_id = f"test_session_{int(time.time() * 1000)}{random.randint(100, 999)}"
-        self.session_token = session_id
+        # Use an existing valid session token from the database
+        self.session_token = "test_session_1770244803683"
         
         print(f"   Using session token: {self.session_token}")
         
