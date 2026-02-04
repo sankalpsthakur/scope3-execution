@@ -544,10 +544,8 @@ export default function ReduceDashboard({ onGoToEngage }) {
         supplier={selectedSupplier}
         isOpen={isPanelOpen}
         onClose={() => setIsPanelOpen(false)}
-        onGoToEngage={() => {
-          if (onGoToEngage && selectedSupplier) {
-            onGoToEngage(selectedSupplier.id);
-          }
+        onGoToEngage={(supplierId) => {
+          if (onGoToEngage) onGoToEngage(supplierId);
         }}
         onEngagementUpdate={(status) => {
           if (selectedSupplier) updateEngagement(selectedSupplier.id, status);
