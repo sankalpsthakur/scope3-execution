@@ -243,6 +243,26 @@ async def get_current_user(request: Request):
         if auth_header and auth_header.startswith("Bearer "):
             session_token = auth_header.split(" ")[1]
 
+    if not session_token:
+        raise HTTPException(status_code=401, detail="No session token provided")
+
+    # Validate session token
+    session = await db.user_sessions.find_one({"session_token": session_token})
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid session token")
+
+    # Check if session is expired
+    expires_at = datetime.fromisoformat(session["expires_at"])
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=401, detail="Session expired")
+
+    # Get user data
+    user = await db.users.find_one({"user_id": session["user_id"]})
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    return {k: user[k] for k in ["user_id", "email", "name", "picture"] if k in user}
+
 
 
 # ==================== EPIC I (MVP): MONGO-BACKED RATE LIMIT (TTL) ====================
