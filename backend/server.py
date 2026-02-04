@@ -209,6 +209,18 @@ async def get_current_user(request: Request):
 
 
 
+
+def _is_test_mode() -> bool:
+    return (os.environ.get("TEST_MODE", "false").lower() == "true")
+
+
+def _check_test_auth(request: Request) -> None:
+    expected = os.environ.get("TEST_AUTH_TOKEN")
+    provided = request.headers.get("X-Test-Auth")
+    if not expected or not provided or not secrets.compare_digest(provided, expected):
+        raise HTTPException(status_code=401, detail="Invalid test auth")
+
+
 # ==================== PROD READINESS HELPERS (AUDIT + RATE LIMIT) ====================
 
 _rate_state: Dict[str, List[float]] = {}
