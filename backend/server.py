@@ -648,7 +648,8 @@ async def get_supplier_deep_dive_v1(supplier_id: str, request: Request):
     """Tech-spec endpoint: returns the engineering handover contract JSON."""
     user = await get_user_from_request(request)
 
-    benchmark = await get_benchmark_by_supplier_identifier(supplier_id, tenant_id=user["user_id"])    if not benchmark:
+    benchmark = await get_benchmark_by_supplier_identifier(supplier_id, tenant_id=user["user_id"])
+    if not benchmark:
         raise HTTPException(status_code=404, detail="Supplier not found")
 
     recommendation = await get_or_generate_recommendation(benchmark)
