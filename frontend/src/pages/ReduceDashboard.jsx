@@ -452,7 +452,7 @@ export default function ReduceDashboard({ onGoToEngage }) {
                     onClick={() => handleSort("cee_rating")}
                   >
                     <div className="flex items-center">
-                      CEE Rating<SortIcon column="cee_rating" />
+                      CEE Rating<SortIcon sortConfig={sortConfig} column="cee_rating" />
                     </div>
                   </TableHead>
                   <TableHead
