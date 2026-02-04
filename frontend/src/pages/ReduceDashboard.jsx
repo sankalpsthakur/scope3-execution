@@ -110,7 +110,13 @@ export default function ReduceDashboard({ onGoToEngage }) {
         params,
       });
 
-      const supplierData = response.data.suppliers || [];
+      // Support both response shapes:
+      // - { suppliers: [...] } (current backend)
+      // - [...] (legacy)
+      const supplierData = Array.isArray(response.data)
+        ? response.data
+        : (response.data.suppliers || []);
+
       setSuppliers(supplierData);
 
       const apiFilters = response.data.filters;
