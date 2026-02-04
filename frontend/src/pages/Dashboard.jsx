@@ -331,7 +331,7 @@ export default function Dashboard() {
                         <SelectValue placeholder="All Ratings" />
                       </SelectTrigger>
                       <SelectContent className="bg-[#121212] border-white/10">
-                        <SelectItem value="">All Ratings</SelectItem>
+                        <SelectItem value="all">All Ratings</SelectItem>
                         {filterOptions.ratings.map(r => (
                           <SelectItem key={r} value={r}>{r}</SelectItem>
                         ))}
