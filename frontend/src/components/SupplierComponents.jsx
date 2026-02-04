@@ -5,6 +5,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const CEERatingBadge = ({ rating }) => {
   const getRatingClass = (r) => {
@@ -71,5 +77,43 @@ export const Heatmap = ({ data, onCellClick }) => {
         </TooltipProvider>
       ))}
     </div>
+  );
+};
+
+// Engagement status configuration
+const ENGAGEMENT_STATUSES = {
+  not_started: { label: "Not Started", color: "bg-gray-500/20 text-gray-400 border-gray-500/30" },
+  in_progress: { label: "In Progress", color: "bg-[#0EA5E9]/20 text-[#0EA5E9] border-[#0EA5E9]/30" },
+  pending_response: { label: "Pending", color: "bg-[#F59E0B]/20 text-[#F59E0B] border-[#F59E0B]/30" },
+  completed: { label: "Completed", color: "bg-[#22C55E]/20 text-[#22C55E] border-[#22C55E]/30" },
+  on_hold: { label: "On Hold", color: "bg-[#EF4444]/20 text-[#EF4444] border-[#EF4444]/30" }
+};
+
+export const EngagementBadge = ({ status, onStatusChange }) => {
+  const config = ENGAGEMENT_STATUSES[status] || ENGAGEMENT_STATUSES.not_started;
+  
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button 
+          className={`px-2 py-1 rounded text-[10px] font-bold border cursor-pointer hover:opacity-80 transition-opacity ${config.color}`}
+          data-testid="engagement-badge"
+        >
+          {config.label}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="bg-[#121212] border-white/10 min-w-[140px]">
+        {Object.entries(ENGAGEMENT_STATUSES).map(([key, value]) => (
+          <DropdownMenuItem 
+            key={key}
+            onClick={() => onStatusChange(key)}
+            className={`text-xs ${status === key ? 'bg-white/5' : ''} hover:bg-white/5`}
+          >
+            <span className={`w-2 h-2 rounded-full mr-2 ${value.color.split(' ')[0]}`} />
+            {value.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
