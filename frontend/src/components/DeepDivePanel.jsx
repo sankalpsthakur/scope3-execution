@@ -291,6 +291,16 @@ export const DeepDivePanel = ({ supplier, isOpen, onClose, onEngagementUpdate, o
                   </div>
                 </div>
 
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Narrative</p>
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    {deepDive.meta.supplier_name} is underperforming peer {deepDive.meta.peer_name}. Peer intensity is
+                    lower ({deepDive.metrics.target_intensity.toFixed(2)} vs {deepDive.metrics.current_intensity.toFixed(2)}),
+                    implying a {deepDive.metrics.reduction_potential_percentage.toFixed(1)}% reduction is technically feasible.
+                  </p>
+                </div>
+
+
                 <div>
                   <h4 className="font-display font-bold text-white mb-3 uppercase tracking-tight text-sm">
                     Case Study
@@ -412,8 +422,42 @@ export const DeepDivePanel = ({ supplier, isOpen, onClose, onEngagementUpdate, o
                           className="flex items-center gap-2 text-sm text-[#0EA5E9] hover:text-[#0EA5E9]/80 transition-colors"
                         >
                           <ExternalLink className="w-3 h-3" />
-                          {doc.title}
+                          <span>
+                            {doc.title}
+                            {doc.page ? <span className="text-gray-500"> (p. {doc.page})</span> : null}
+                          </span>
                         </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {deepDive.content.source_citations?.length > 0 && (
+                  <div>
+                    <h4 className="font-display font-bold text-white mb-3 uppercase tracking-tight text-sm">
+                      Evidence Excerpts
+                    </h4>
+                    <div className="space-y-3">
+                      {deepDive.content.source_citations.slice(0, 6).map((c, idx) => (
+                        <div key={idx} className="rounded-lg border border-white/10 bg-white/5 p-4">
+                          <div className="flex items-center justify-between gap-3 mb-2">
+                            <p className="text-xs text-gray-400 uppercase tracking-wider">
+                              {c.title}
+                              {c.page ? <span className="text-gray-500"> • Page {c.page}</span> : null}
+                            </p>
+                            {c.url ? (
+                              <a
+                                href={c.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-[#0EA5E9] hover:text-[#0EA5E9]/80"
+                              >
+                                Open
+                              </a>
+                            ) : null}
+                          </div>
+                          <p className="text-sm text-gray-300 leading-relaxed">“{c.quote}”</p>
+                        </div>
                       ))}
                     </div>
                   </div>

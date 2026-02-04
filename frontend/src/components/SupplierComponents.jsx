@@ -70,7 +70,7 @@ export const Heatmap = ({ data, onCellClick }) => {
               <p className="font-semibold text-white text-sm">{supplier.supplier_name}</p>
               <p className="text-gray-400 text-xs">{supplier.category}</p>
               <p className="text-[#22C55E] text-xs mt-1">
-                {supplier.potential_reduction_pct.toFixed(1)}% reduction potential
+                Action Available: {supplier.potential_reduction_pct.toFixed(1)}% Reduction Potential
               </p>
             </TooltipContent>
           </Tooltip>
