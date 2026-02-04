@@ -481,6 +481,9 @@ async def ingest_disclosures(request: Request):
     # Clear previous tenant chunks
     await db.disclosure_chunks.delete_many({"tenant_id": tenant_id})
 
+    # Ensure vector search is fast enough for MVP.
+    await db.disclosure_chunks.create_index([("tenant_id", 1), ("company_id", 1), ("category", 1)])
+
     created = 0
     for s in sources:
         raw = await _seed_doc_text(s["url"])
