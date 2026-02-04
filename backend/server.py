@@ -796,7 +796,11 @@ async def get_or_generate_recommendation(benchmark: dict) -> dict:
     if cached:
         return cached
 
-    raw_context, citations = await build_evidence_context(benchmark["peer_id"], benchmark["category"])
+    raw_context, citations = await build_evidence_context(
+        benchmark["peer_id"],
+        benchmark["category"],
+        tenant_id=benchmark.get("tenant_id")
+    )
     if not raw_context.strip():
         return build_generic_recommendation_template(benchmark, "missing_public_report")
 
