@@ -30,7 +30,7 @@ const ENGAGEMENT_STATUSES = {
   on_hold: { label: "On Hold", color: "bg-[#EF4444]/20 text-[#EF4444]" }
 };
 
-export const DeepDivePanel = ({ supplier, isOpen, onClose, onEngagementUpdate }) => {
+export const DeepDivePanel = ({ supplier, isOpen, onClose, onEngagementUpdate, onGoToEngage }) => {
   const [deepDive, setDeepDive] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
