@@ -628,6 +628,344 @@ async def seed_mock_data():
     
     return {"message": "Mock data seeded successfully", "count": len(mock_suppliers)}
 
+# ==================== SUPPLIER FILTERING ====================
+
+@api_router.get("/suppliers/filter")
+async def get_filtered_suppliers(
+    request: Request,
+    category: Optional[str] = None,
+    rating: Optional[str] = None,
+    min_impact: Optional[float] = None,
+    max_impact: Optional[float] = None,
+    min_reduction: Optional[float] = None,
+    sort_by: str = "upstream_impact_pct",
+    sort_order: str = "desc"
+):
+    """Get filtered supplier benchmarks"""
+    await get_user_from_request(request)
+    
+    # Build query filter
+    query = {}
+    
+    if category:
+        query["category"] = {"$regex": category, "$options": "i"}
+    
+    if rating:
+        # Support multiple ratings like "A,B" or single "C"
+        ratings = [r.strip() for r in rating.split(",")]
+        if len(ratings) == 1:
+            query["cee_rating"] = {"$regex": f"^{ratings[0]}", "$options": "i"}
+        else:
+            query["cee_rating"] = {"$in": [{"$regex": f"^{r}", "$options": "i"} for r in ratings]}
+    
+    if min_impact is not None:
+        query["upstream_impact_pct"] = {"$gte": min_impact}
+    
+    if max_impact is not None:
+        if "upstream_impact_pct" in query:
+            query["upstream_impact_pct"]["$lte"] = max_impact
+        else:
+            query["upstream_impact_pct"] = {"$lte": max_impact}
+    
+    if min_reduction is not None:
+        query["potential_reduction_pct"] = {"$gte": min_reduction}
+    
+    # Sort direction
+    sort_direction = -1 if sort_order == "desc" else 1
+    
+    suppliers = await db.supplier_benchmarks.find(
+        query,
+        {"_id": 0}
+    ).sort(sort_by, sort_direction).to_list(500)
+    
+    # Get unique categories for filter options
+    all_categories = await db.supplier_benchmarks.distinct("category")
+    all_ratings = await db.supplier_benchmarks.distinct("cee_rating")
+    
+    return {
+        "suppliers": suppliers,
+        "total": len(suppliers),
+        "filters": {
+            "categories": sorted(all_categories),
+            "ratings": sorted(all_ratings),
+            "applied": {
+                "category": category,
+                "rating": rating,
+                "min_impact": min_impact,
+                "max_impact": max_impact,
+                "min_reduction": min_reduction
+            }
+        }
+    }
+
+# ==================== ENGAGEMENT TRACKING ====================
+
+class EngagementStatus(BaseModel):
+    supplier_id: str
+    status: str  # "not_started", "in_progress", "pending_response", "completed", "on_hold"
+    notes: Optional[str] = None
+    next_action_date: Optional[str] = None
+
+class EngagementUpdate(BaseModel):
+    status: str
+    notes: Optional[str] = None
+    next_action_date: Optional[str] = None
+
+@api_router.get("/engagements")
+async def get_all_engagements(request: Request):
+    """Get all supplier engagement statuses"""
+    user = await get_user_from_request(request)
+    
+    engagements = await db.supplier_engagements.find(
+        {"user_id": user["user_id"]},
+        {"_id": 0}
+    ).to_list(500)
+    
+    return {"engagements": engagements}
+
+@api_router.get("/engagements/{supplier_id}")
+async def get_engagement(supplier_id: str, request: Request):
+    """Get engagement status for a specific supplier"""
+    user = await get_user_from_request(request)
+    
+    engagement = await db.supplier_engagements.find_one(
+        {"user_id": user["user_id"], "supplier_id": supplier_id},
+        {"_id": 0}
+    )
+    
+    if not engagement:
+        # Return default status
+        return {
+            "supplier_id": supplier_id,
+            "user_id": user["user_id"],
+            "status": "not_started",
+            "notes": None,
+            "next_action_date": None,
+            "history": []
+        }
+    
+    return engagement
+
+@api_router.put("/engagements/{supplier_id}")
+async def update_engagement(supplier_id: str, update: EngagementUpdate, request: Request):
+    """Update engagement status for a supplier"""
+    user = await get_user_from_request(request)
+    
+    # Get existing engagement
+    existing = await db.supplier_engagements.find_one(
+        {"user_id": user["user_id"], "supplier_id": supplier_id}
+    )
+    
+    history_entry = {
+        "status": update.status,
+        "notes": update.notes,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    
+    if existing:
+        # Update existing
+        history = existing.get("history", [])
+        history.append(history_entry)
+        
+        await db.supplier_engagements.update_one(
+            {"user_id": user["user_id"], "supplier_id": supplier_id},
+            {"$set": {
+                "status": update.status,
+                "notes": update.notes,
+                "next_action_date": update.next_action_date,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "history": history
+            }}
+        )
+    else:
+        # Create new
+        await db.supplier_engagements.insert_one({
+            "user_id": user["user_id"],
+            "supplier_id": supplier_id,
+            "status": update.status,
+            "notes": update.notes,
+            "next_action_date": update.next_action_date,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "history": [history_entry]
+        })
+    
+    # Return updated engagement
+    engagement = await db.supplier_engagements.find_one(
+        {"user_id": user["user_id"], "supplier_id": supplier_id},
+        {"_id": 0}
+    )
+    
+    return engagement
+
+# ==================== PDF EXPORT ====================
+
+from fastapi.responses import StreamingResponse
+from io import BytesIO
+
+@api_router.get("/suppliers/{supplier_id}/export-pdf")
+async def export_recommendation_pdf(supplier_id: str, request: Request):
+    """Export supplier recommendation as PDF"""
+    await get_user_from_request(request)
+    
+    # Get benchmark data
+    benchmark = await db.supplier_benchmarks.find_one(
+        {"id": supplier_id},
+        {"_id": 0}
+    )
+    
+    if not benchmark:
+        raise HTTPException(status_code=404, detail="Supplier not found")
+    
+    # Get recommendation content
+    recommendation = await db.recommendation_content.find_one(
+        {"benchmark_id": supplier_id},
+        {"_id": 0}
+    )
+    
+    if not recommendation:
+        recommendation = await generate_ai_recommendation(benchmark)
+    
+    # Generate PDF
+    pdf_buffer = generate_pdf_report(benchmark, recommendation)
+    
+    filename = f"recommendation_{benchmark['supplier_name'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
+    
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+def generate_pdf_report(benchmark: dict, recommendation: dict) -> BytesIO:
+    """Generate PDF report using ReportLab"""
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.units import inch
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.75*inch, bottomMargin=0.75*inch)
+    
+    styles = getSampleStyleSheet()
+    
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=20,
+        textColor=colors.HexColor('#22C55E'),
+        spaceAfter=12
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.HexColor('#333333'),
+        spaceBefore=16,
+        spaceAfter=8
+    )
+    
+    body_style = ParagraphStyle(
+        'CustomBody',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.HexColor('#555555'),
+        spaceAfter=6,
+        leading=14
+    )
+    
+    clause_style = ParagraphStyle(
+        'ClauseStyle',
+        parent=styles['Normal'],
+        fontSize=9,
+        textColor=colors.HexColor('#333333'),
+        spaceAfter=6,
+        leading=12,
+        leftIndent=20,
+        rightIndent=20,
+        backColor=colors.HexColor('#F5F5F5')
+    )
+    
+    story = []
+    
+    # Title
+    story.append(Paragraph(f"Carbon Reduction Recommendation", title_style))
+    story.append(Paragraph(f"<b>{benchmark['supplier_name']}</b>", styles['Heading2']))
+    story.append(Spacer(1, 12))
+    
+    # Metrics Table
+    metrics_data = [
+        ['Metric', 'Value'],
+        ['Category', benchmark['category']],
+        ['CEE Rating', benchmark['cee_rating']],
+        ['Current Intensity', f"{benchmark['supplier_intensity']:.2f} kgCO2e/unit"],
+        ['Target Intensity', f"{benchmark['peer_intensity']:.2f} kgCO2e/unit"],
+        ['Reduction Potential', f"{benchmark['potential_reduction_pct']:.1f}%"],
+        ['Upstream Impact', f"{benchmark['upstream_impact_pct']:.2f}%"],
+        ['Peer Benchmark', benchmark['peer_name']]
+    ]
+    
+    metrics_table = Table(metrics_data, colWidths=[2.5*inch, 4*inch])
+    metrics_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#22C55E')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#FAFAFA')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E0E0E0')),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+    ]))
+    story.append(metrics_table)
+    story.append(Spacer(1, 20))
+    
+    # Headline
+    story.append(Paragraph("AI Analysis", heading_style))
+    story.append(Paragraph(recommendation.get('headline', 'N/A'), body_style))
+    story.append(Spacer(1, 12))
+    
+    # Case Study
+    story.append(Paragraph("Case Study", heading_style))
+    story.append(Paragraph(recommendation.get('case_study_summary', 'N/A'), body_style))
+    story.append(Spacer(1, 12))
+    
+    # Action Plan
+    story.append(Paragraph("Recommended Actions", heading_style))
+    action_plan = recommendation.get('action_plan', [])
+    for action in action_plan:
+        if isinstance(action, dict):
+            step_text = f"<b>Step {action.get('step', '?')}: {action.get('title', 'N/A')}</b><br/>{action.get('detail', 'N/A')}"
+            if action.get('citation'):
+                step_text += f"<br/><i>Source: {action.get('citation')}</i>"
+            story.append(Paragraph(step_text, body_style))
+            story.append(Spacer(1, 6))
+    
+    story.append(Spacer(1, 12))
+    
+    # Contract Clause
+    story.append(Paragraph("Suggested Contract Clause", heading_style))
+    story.append(Paragraph(recommendation.get('contract_clause', 'N/A'), clause_style))
+    story.append(Spacer(1, 12))
+    
+    # Timeline
+    story.append(Paragraph("Feasibility Timeline", heading_style))
+    story.append(Paragraph(recommendation.get('feasibility_timeline', '24-36 months'), body_style))
+    
+    # Footer
+    story.append(Spacer(1, 30))
+    footer_style = ParagraphStyle('Footer', parent=styles['Normal'], fontSize=8, textColor=colors.grey)
+    story.append(Paragraph(f"Generated by Scope3 Reduce AI Engine on {datetime.now().strftime('%B %d, %Y')}", footer_style))
+    
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
 # ==================== BASIC ENDPOINTS ====================
 
 @api_router.get("/")
