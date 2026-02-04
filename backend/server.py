@@ -173,6 +173,57 @@ async def create_session(request: Request, response: Response):
         raise
     except Exception as e:
         logger.error(f"Session creation error: {e}")
+
+
+@api_router.post("/auth/test-login")
+async def test_login(request: Request, response: Response):
+    """DEV/TEST ONLY: deterministic auth for automated E2E.
+
+    Guarded by:
+    - TEST_MODE=true
+    - X-Test-Auth header matches TEST_AUTH_TOKEN
+
+    Creates/returns a session cookie for a fixed test user.
+    """
+    if not _is_test_mode():
+        raise HTTPException(status_code=404, detail="Not found")
+
+    _check_test_auth(request)
+
+    test_user = {
+        "user_id": "test_user",
+        "email": "test@example.com",
+        "name": "Test User",
+        "picture": None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.users.replace_one({"user_id": test_user["user_id"]}, test_user, upsert=True)
+
+    session_token = f"test_session_{uuid.uuid4().hex}"
+    expires_at = datetime.now(timezone.utc) + timedelta(days=1)
+    await db.user_sessions.insert_one(
+        {
+            "user_id": test_user["user_id"],
+            "session_token": session_token,
+            "expires_at": expires_at.isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+        max_age=24 * 60 * 60,
+    )
+
+    await _log_audit(test_user["user_id"], "auth.test_login")
+    return {"user": {k: test_user[k] for k in ["user_id", "email", "name", "picture"]}, "session_token": session_token}
+
         raise HTTPException(status_code=500, detail=str(e))
 
 
