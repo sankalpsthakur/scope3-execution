@@ -391,16 +391,16 @@ export default function Dashboard() {
         {/* Active Filters Display */}
         {activeFilterCount > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
-            {filters.category && (
+            {filters.category && filters.category !== "all" && (
               <Badge className="bg-[#22C55E]/20 text-[#22C55E] border-0">
                 Category: {filters.category}
-                <X className="w-3 h-3 ml-1 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, category: "" }))} />
+                <X className="w-3 h-3 ml-1 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, category: "all" }))} />
               </Badge>
             )}
-            {filters.rating && (
+            {filters.rating && filters.rating !== "all" && (
               <Badge className="bg-[#0EA5E9]/20 text-[#0EA5E9] border-0">
                 Rating: {filters.rating}
-                <X className="w-3 h-3 ml-1 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, rating: "" }))} />
+                <X className="w-3 h-3 ml-1 cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, rating: "all" }))} />
               </Badge>
             )}
             {filters.minImpact && (
