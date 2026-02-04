@@ -214,6 +214,42 @@
 ##     - "Reduce dashboard server-side filtering + evidence excerpts UI"
 ##     - "Module navigation (Measure/Reduce/Engage/Report)"
 ##     - "New Measure module with baseline inventory and metrics"
+
+##   - task: "Measure MVP (spend + activity baseline, coverage/uncertainty, category breakdown, intensity panel)"
+##     implemented: true
+##     working: "true"
+##     file: "/app/backend/server.py", "/app/frontend/src/pages/MeasurePage.jsx"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: false
+##     status_history:
+##       - working: "true"
+##         agent: "main"
+##         comment: "Measure module now computes upstream baseline from seeded purchases + activity, applies factors with provenance, shows total tCO₂e, category breakdown, top suppliers, intensity, coverage and uncertainty flags."
+##
+##   - task: "Heatmap determinism via /api/suppliers/heatmap"
+##     implemented: true
+##     working: "true"
+##     file: "/app/frontend/src/pages/ReduceDashboard.jsx", "/app/backend/server.py"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: false
+##     status_history:
+##       - working: "true"
+##         agent: "main"
+##         comment: "Heatmap now fetches from dedicated endpoint and falls back to table data; switching views no longer clears table."
+##
+##   - task: "Deterministic test auth for E2E (no OAuth dependency)"
+##     implemented: true
+##     working: "true"
+##     file: "/app/backend/server.py", "/app/backend/.env"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: false
+##     status_history:
+##       - working: "true"
+##         agent: "main"
+##         comment: "Added /api/auth/test-login gated by TEST_MODE + X-Test-Auth header for Playwright deterministic auth."
 ##   stuck_tasks:
 ##     - "Reduce dashboard server-side filtering + evidence excerpts UI"
 ##   test_all: true
