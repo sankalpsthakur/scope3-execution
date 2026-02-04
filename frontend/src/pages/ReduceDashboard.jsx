@@ -460,7 +460,7 @@ export default function ReduceDashboard({ onGoToEngage }) {
                     onClick={() => handleSort("potential_reduction_pct")}
                   >
                     <div className="flex items-center">
-                      Potential Red.<SortIcon column="potential_reduction_pct" />
+                      Potential Red.<SortIcon sortConfig={sortConfig} column="potential_reduction_pct" />
                     </div>
                   </TableHead>
                   <TableHead
