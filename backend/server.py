@@ -218,11 +218,13 @@ async def test_login(request: Request, response: Response):
         }
     )
 
+    # For local Playwright runs over http://localhost, Secure cookies will not persist.
+    # This endpoint is TEST_MODE-gated, so it is safe to set secure=False.
     response.set_cookie(
         key="session_token",
         value=session_token,
         httponly=True,
-        secure=True,
+        secure=False,
         samesite="none",
         path="/",
         max_age=24 * 60 * 60,
