@@ -664,7 +664,11 @@ def main():
     tester = Scope3ReduceAPITester()
     
     try:
-        success = tester.run_all_tests()
+        # Check if we should run only regression test
+        if len(sys.argv) > 1 and sys.argv[1] == "--regression":
+            success = tester.run_regression_test_only()
+        else:
+            success = tester.run_all_tests()
         
         # Save test results
         with open('/app/test_results.json', 'w') as f:
