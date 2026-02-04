@@ -310,9 +310,12 @@ class Iteration3ReduceModuleTester:
                                 print("   Content: ✅ All required fields present")
                             else:
                                 missing = []
-                                if not has_meta: missing.append("meta fields")
-                                if not has_metrics: missing.append("metrics fields")
-                                if not has_content: missing.append("content fields")
+                                if not has_meta:
+                                    missing.append("meta fields")
+                                if not has_metrics:
+                                    missing.append("metrics fields")
+                                if not has_content:
+                                    missing.append("content fields")
                                 self.log_test("v1 deep-dive matches tech spec JSON contract", False,
                                             f"Missing: {', '.join(missing)}")
                         else:
