@@ -415,7 +415,13 @@ class Iteration3ReduceModuleTester:
 
 def main():
     """Main test runner"""
-    tester = Iteration3ReduceModuleTester()
+    # This must use the same backend URL the frontend uses (env var), never hardcode.
+    import os
+    base_url = os.environ.get("REACT_APP_BACKEND_URL")
+    if not base_url:
+        raise RuntimeError("REACT_APP_BACKEND_URL env var is required for this test")
+
+    tester = Iteration3ReduceModuleTester(base_url=base_url)
     
     try:
         success = tester.run_all_tests()
