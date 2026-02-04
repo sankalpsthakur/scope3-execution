@@ -393,8 +393,8 @@ The peer achieved a {benchmark['potential_reduction_pct']}% reduction. Generate 
         }
         
         # Cache the recommendation
-        await db.recommendation_content.insert_one({**recommendation, "_id": None})
-        del recommendation.get("_id", None) if "_id" in recommendation else None
+        rec_to_save = {**recommendation}
+        await db.recommendation_content.insert_one(rec_to_save)
         
         return recommendation
         
