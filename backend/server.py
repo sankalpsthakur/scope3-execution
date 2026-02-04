@@ -1025,7 +1025,7 @@ async def get_heatmap_data(request: Request):
 async def get_supplier_deep_dive(supplier_id: str, request: Request):
     """Legacy deep-dive endpoint used by the current frontend."""
     user = await get_user_from_request(request)
-    _rate_limit(f"deep_dive:{user['user_id']}", limit=15, window_seconds=60)
+    await _rate_limit_persistent(user["user_id"], action="deep_dive", limit=15, window_seconds=60)
 
     benchmark = await get_benchmark_by_supplier_identifier(supplier_id, tenant_id=user["user_id"])
     if not benchmark:
