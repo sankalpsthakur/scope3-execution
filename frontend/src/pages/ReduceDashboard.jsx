@@ -158,6 +158,13 @@ export default function ReduceDashboard({ onGoToEngage }) {
     }));
   };
 
+  useEffect(() => {
+    // Ensure table data is refreshed when switching back to table view.
+    if (viewMode === "table") {
+      fetchFilteredSuppliers();
+    }
+  }, [viewMode, fetchFilteredSuppliers]);
+
   const sortedSuppliers = [...suppliers].sort((a, b) => {
     const aVal = a[sortConfig.key];
     const bVal = b[sortConfig.key];
