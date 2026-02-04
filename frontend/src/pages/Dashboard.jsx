@@ -66,7 +66,7 @@ export default function Dashboard() {
   // Apply filters when suppliers or filters change
   useEffect(() => {
     applyFilters();
-  }, [suppliers, filters]);
+  }, [suppliers, filters, applyFilters]);
 
   const fetchSuppliers = async () => {
     try {
