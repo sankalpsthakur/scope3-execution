@@ -503,7 +503,7 @@ async def ingest_disclosures(request: Request):
     user = await get_user_from_request(request)
     tenant_id = user["user_id"]
 
-    _rate_limit(f"pipeline_ingest:{tenant_id}", limit=6, window_seconds=60)
+    await _rate_limit_persistent(tenant_id, action="pipeline_ingest", limit=6, window_seconds=60)
 
     sources = await db.disclosure_sources.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(200)
     if not sources:
