@@ -162,8 +162,8 @@ export default function Dashboard() {
 
   const clearFilters = () => {
     setFilters({
-      category: "",
-      rating: "",
+      category: "all",
+      rating: "all",
       minImpact: "",
       minReduction: ""
     });
