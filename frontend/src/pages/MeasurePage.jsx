@@ -54,6 +54,7 @@ export default function MeasurePage() {
       setLoading(true);
       try {
         // Seed measure inputs for this demo (safe to call repeatedly).
+        // NOTE: This keeps the Measure module non-empty in a MOCK environment.
         await axios.post(`${API}/measure/seed`, {}, { withCredentials: true });
         const res = await axios.get(`${API}/measure/overview`, {
           withCredentials: true,
