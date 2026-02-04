@@ -1266,7 +1266,7 @@ async def seed_mock_data(request: Request):
 
     This simulates the output of the precomputed pipeline using the peer-matching rules:
     - same ISIC (4-digit)
-    - revenue within 0.5x..2.0x
+    - revenue within 0.5x to 2.0x
     - select peer with lowest intensity in category
     """
     await get_user_from_request(request)
