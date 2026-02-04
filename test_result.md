@@ -182,3 +182,5 @@
 ## agent_communication:
 ##   - agent: "main"
 ##     message: "Please run full backend + frontend testing including OAuth login, /dashboard modules navigation, Reduce table + filters, deep dive (including missing-evidence case), engagement updates, copy clause toast, and PDF export. Log results and create /app/test_reports/iteration_3.json."
+##   - agent: "testing"
+##     message: "TESTING COMPLETED WITH LIMITATIONS: ✅ Landing page fully functional with correct UI elements and branding. ✅ Backend syntax error fixed and service running correctly. ✅ Authentication flow properly configured and redirects to Emergent OAuth. ❌ BLOCKED: Cannot complete authenticated E2E testing due to OAuth requirement - manual authentication needed. All authenticated features (Reduce module, Deep Dive, Engage, PDF export) require manual testing. Created comprehensive test report at /app/test_reports/iteration_3.json. Recommend setting up test authentication bypass for automated testing."
