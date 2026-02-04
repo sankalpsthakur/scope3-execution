@@ -97,13 +97,27 @@ class Iteration3ReduceModuleTester:
                 self.log_test(f"Unauthenticated /{endpoint} returns 401", False, f"Request failed: {e}")
 
     def attempt_authentication(self):
-        """Attempt to get authenticated session"""
+        """Attempt to get authenticated session.
+
+        NOTE: This environment uses Emergent OAuth; interactive login isn't feasible for a
+        headless script without a provided session token.
+
+        You can set TEST_SESSION_TOKEN to run authenticated tests:
+          export TEST_SESSION_TOKEN=... 
+        """
         print("\n" + "="*50)
         print("3. ATTEMPTING AUTHENTICATION")
         print("="*50)
-        
-        # Try using the test session token from the existing test
-        self.session_token = "test_session_1770232854297"
+
+        import os
+        self.session_token = os.environ.get("TEST_SESSION_TOKEN")
+        if not self.session_token:
+            self.log_test(
+                "Authentication (TEST_SESSION_TOKEN provided)",
+                False,
+                "Set TEST_SESSION_TOKEN env var to run authenticated tests",
+            )
+            return False
         
         try:
             headers = {'Authorization': f'Bearer {self.session_token}'}
