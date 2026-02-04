@@ -1363,7 +1363,10 @@ async def seed_mock_data():
         {"company_id": "fedex", "category": "Transport & Distribution", "spend_m": 0},  # zero spend
     ]
 
-    total_spend = sum(s["spend_m"] for s in user_suppliers) or 1
+    # Compute upstream impact relative to measured baseline (Measure module)
+    measure_period = "last_12_months"
+    total_upstream_tco2e = await _measure_total_upstream_tco2e(measure_period)
+    supplier_tco2e_map = await _measure_supplier_tco2e_by_supplier_id(measure_period)
 
     benchmarks: List[Dict[str, Any]] = []
     for s in user_suppliers:
