@@ -1083,30 +1083,17 @@ async def _compute_inventory(period: str) -> Dict[str, Any]:
 
         factor = await _factor_lookup("spend", category, region, year)
         if not factor:
-            line_items.append({
-                **p,
-                "method": "spend",
-                "tco2e": 0.0,
-                "factor_match": False,
-
-
-def _safe_div(n: float, d: float) -> float:
-    return (n / d) if d else 0.0
-
-
-async def _measure_total_upstream_tco2e(period: str = "last_12_months") -> float:
-    inv = await _compute_inventory(period)
-    return float(inv.get("total_upstream_tco2e", 0.0) or 0.0)
-
-
-async def _measure_supplier_tco2e_by_supplier_id(period: str = "last_12_months") -> Dict[str, float]:
-    inv = await _compute_inventory(period)
-    return {s["supplier_id"]: float(s.get("tco2e", 0.0) or 0.0) for s in inv.get("top_suppliers", [])}
-
-                "factor": None,
-                "uncertainty": _uncertainty_for_method("spend"),
-                "data_quality": "low",
-            })
+            line_items.append(
+                {
+                    **p,
+                    "method": "spend",
+                    "tco2e": 0.0,
+                    "factor_match": False,
+                    "factor": None,
+                    "uncertainty": _uncertainty_for_method("spend"),
+                    "data_quality": "low",
+                }
+            )
             continue
 
         kg = amount * float(factor["value"])  # kgCO2e
