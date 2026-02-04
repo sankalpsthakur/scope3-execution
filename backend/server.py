@@ -1086,8 +1086,8 @@ async def _measure_total_upstream_tco2e(user_id: str, period: str = "last_12_mon
     return float(inv.get("total_upstream_tco2e", 0.0) or 0.0)
 
 
-async def _measure_supplier_tco2e_by_supplier_id(period: str = "last_12_months") -> Dict[str, float]:
-    inv = await _compute_inventory(period)
+async def _measure_supplier_tco2e_by_supplier_id(user_id: str, period: str = "last_12_months") -> Dict[str, float]:
+    inv = await _compute_inventory(period, user_id=user_id)
     return {s["supplier_id"]: float(s.get("tco2e", 0.0) or 0.0) for s in inv.get("top_suppliers", [])}
 
 
