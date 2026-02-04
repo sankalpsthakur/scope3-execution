@@ -72,7 +72,7 @@ export const DeepDivePanel = ({ supplier, isOpen, onClose }) => {
             </SheetHeader>
           </div>
 
-          <ScrollArea className="flex-1">
+          <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="w-8 h-8 border-2 border-[#22C55E] border-t-transparent rounded-full animate-spin"></div>
