@@ -218,16 +218,15 @@ async def test_login(request: Request, response: Response):
         }
     )
 
-    # For local Playwright runs over http://localhost, Secure cookies will not persist.
-    # This endpoint is TEST_MODE-gated, so it is safe to set secure=False.
-    # SameSite=none requires Secure=true, but Secure=true doesn't work on HTTP (localhost)
-    # So we use SameSite=lax for localhost testing
+    # This cookie must work for cross-site XHR from localhost (http://localhost:3000)
+    # to the backend domain (https://...). Modern browsers require SameSite=None cookies
+    # to be Secure.
     response.set_cookie(
         key="session_token",
         value=session_token,
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=True,
+        samesite="none",
         path="/",
         max_age=24 * 60 * 60,
     )
