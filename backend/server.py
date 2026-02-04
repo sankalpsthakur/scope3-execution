@@ -238,7 +238,7 @@ async def _log_audit(user_id: str, action: str, meta: Optional[Dict[str, Any]] =
         # Avoid breaking user flows for audit logging.
         return
 
-    return user_doc
+    return
 
 
 @api_router.post("/auth/logout")
