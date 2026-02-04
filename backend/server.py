@@ -1091,7 +1091,7 @@ async def _measure_supplier_tco2e_by_supplier_id(period: str = "last_12_months")
     return {s["supplier_id"]: float(s.get("tco2e", 0.0) or 0.0) for s in inv.get("top_suppliers", [])}
 
 
-async def _compute_inventory(period: str) -> Dict[str, Any]:
+async def _compute_inventory(period: str, user_id: str = "_global_demo") -> Dict[str, Any]:
     start, end = _period_bounds(period)
 
     # NOTE: dates stored as strings for mock simplicity. Filter by prefix year for now.
