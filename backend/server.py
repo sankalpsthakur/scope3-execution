@@ -639,9 +639,9 @@ async def get_user_from_request(request: Request) -> dict:
 
 # ==================== MOCK PIPELINE: INGESTION -> “EVIDENCE CHUNKS” ====================
 
-async def build_evidence_context(peer_id: str, category: str) -> Tuple[str, List[Dict[str, Any]]]:
+async def build_evidence_context(peer_id: str, category: str, tenant_id: str) -> Tuple[str, List[Dict[str, Any]]]:
     chunks = await db.disclosure_chunks.find(
-        {"company_id": peer_id, "category": category},
+        {"tenant_id": tenant_id, "company_id": peer_id, "category": category},
         {"_id": 0},
     ).sort("page", 1).to_list(20)
 
