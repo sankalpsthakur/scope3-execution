@@ -170,14 +170,8 @@ export default function ReduceDashboard({ onGoToEngage }) {
     })
     .length;
 
-  const SortIcon = ({ column }) => {
-    if (sortConfig.key !== column) return null;
-    return sortConfig.direction === "desc" ? (
-      <ChevronDown className="w-3 h-3 ml-1" />
-    ) : (
-      <ChevronUp className="w-3 h-3 ml-1" />
-    );
-  };
+  // SortIcon extracted to top-level to satisfy lint rules.
+
 
   const totalUpstreamImpact = suppliers.reduce((sum, s) => sum + (s.upstream_impact_pct || 0), 0);
   const avgReduction = suppliers.length > 0 ? suppliers.reduce((sum, s) => sum + (s.potential_reduction_pct || 0), 0) / suppliers.length : 0;
