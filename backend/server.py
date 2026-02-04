@@ -1254,8 +1254,8 @@ async def measure_overview(request: Request, period: str = "last_12_months"):
 
 @api_router.get("/measure/suppliers")
 async def measure_suppliers(request: Request, period: str = "last_12_months"):
-    await get_user_from_request(request)
-    inv = await _compute_inventory(period)
+    user = await get_user_from_request(request)
+    inv = await _compute_inventory(period, user_id=user["user_id"])
     return {"period": inv["period"], "top_suppliers": inv["top_suppliers"], "coverage_pct": inv["coverage_pct"]}
 
 
