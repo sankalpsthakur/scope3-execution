@@ -106,11 +106,11 @@ export default function Dashboard() {
   const applyFilters = useCallback(() => {
     let result = [...suppliers];
     
-    if (filters.category) {
+    if (filters.category && filters.category !== "all") {
       result = result.filter(s => s.category === filters.category);
     }
     
-    if (filters.rating) {
+    if (filters.rating && filters.rating !== "all") {
       result = result.filter(s => s.cee_rating.startsWith(filters.rating));
     }
     
