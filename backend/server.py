@@ -203,6 +203,40 @@ async def get_current_user(request: Request):
     if not user_doc:
         raise HTTPException(status_code=404, detail="User not found")
 
+
+
+# ==================== PROD READINESS HELPERS (AUDIT + RATE LIMIT) ====================
+
+_rate_state: Dict[str, List[float]] = {}
+
+
+def _rate_limit(key: str, limit: int, window_seconds: int = 60) -> None:
+    """Very small in-memory rate limiter (single-process)."""
+    import time
+
+    now = time.time()
+    bucket = _rate_state.setdefault(key, [])
+    bucket[:] = [t for t in bucket if now - t < window_seconds]
+    if len(bucket) >= limit:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    bucket.append(now)
+
+
+async def _log_audit(user_id: str, action: str, meta: Optional[Dict[str, Any]] = None) -> None:
+    try:
+        await db.audit_events.insert_one(
+            {
+                "id": str(uuid.uuid4()),
+                "user_id": user_id,
+                "action": action,
+                "meta": meta or {},
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+    except Exception:
+        # Avoid breaking user flows for audit logging.
+        return
+
     return user_doc
 
 
