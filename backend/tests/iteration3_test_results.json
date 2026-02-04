@@ -1,0 +1,100 @@
+{
+  "summary": {
+    "tests_run": 15,
+    "tests_passed": 14,
+    "success_rate": 93.33333333333333,
+    "timestamp": "2026-02-04T20:48:42.387159"
+  },
+  "results": [
+    {
+      "test": "Health endpoint returns healthy status",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T20:48:36.457171"
+    },
+    {
+      "test": "Unauthenticated /api/suppliers returns 401",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T20:48:36.493949"
+    },
+    {
+      "test": "Unauthenticated /suppliers/filter returns 401",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T20:48:36.540619"
+    },
+    {
+      "test": "Unauthenticated /suppliers/heatmap returns 401",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T20:48:36.626886"
+    },
+    {
+      "test": "Unauthenticated /engagements returns 401",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T20:48:36.665943"
+    },
+    {
+      "test": "Unauthenticated /pipeline/run returns 401",
+      "success": false,
+      "details": "Expected 401, got 405",
+      "timestamp": "2026-02-04T20:48:36.700374"
+    },
+    {
+      "test": "Authentication with test session",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T20:48:36.740685"
+    },
+    {
+      "test": "POST /api/seed-data seeds data",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T20:48:36.788514"
+    },
+    {
+      "test": "GET /api/suppliers returns correctly filtered suppliers",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T20:48:36.830243"
+    },
+    {
+      "test": "Suppliers sorted by upstream_impact_pct desc",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T20:48:36.830265"
+    },
+    {
+      "test": "GET /api/suppliers/filter with params works",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T20:48:36.869668"
+    },
+    {
+      "test": "Legacy deep-dive returns complete structure",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T20:48:42.123323"
+    },
+    {
+      "test": "v1 deep-dive matches tech spec JSON contract",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T20:48:42.185953"
+    },
+    {
+      "test": "PUT /api/engagements creates/updates engagement",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T20:48:42.265984"
+    },
+    {
+      "test": "GET /api/suppliers/{id}/export-pdf returns PDF",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T20:48:42.386167"
+    }
+  ]
+}
