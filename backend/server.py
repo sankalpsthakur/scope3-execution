@@ -898,9 +898,13 @@ async def seed_measure_data(request: Request):
     """
     await get_user_from_request(request)
 
-    await db.measure_purchases.delete_many({})
-    await db.measure_activity.delete_many({})
-    await db.measure_emission_factors.delete_many({})
+    user = await get_user_from_request(request)
+    user_id = user["user_id"]
+
+    await db.measure_purchases.delete_many({"user_id": user_id})
+    await db.measure_activity.delete_many({"user_id": user_id})
+
+    # Factors are global in this MVP (public methodology library). We upsert by id below.
 
     factors = [
         {
@@ -960,13 +964,15 @@ async def seed_measure_data(request: Request):
         },
     ]
 
-    await db.measure_emission_factors.insert_many(factors)
+    for f in factors:
+        await db.measure_emission_factors.replace_one({"id": f["id"]}, f, upsert=True)
 
     # Align with Reduce suppliers seeded by /seed-data
     # Use same supplier IDs from the Reduce benchmark seed pattern: {company_id}_001
     purchases = [
         {
             "id": str(uuid.uuid4()),
+            "user_id": user_id,
             "supplier_id": "ppg_001",
             "supplier_name": "PPG Industries",
             "category": "Purchased Goods & Services",
@@ -976,6 +982,7 @@ async def seed_measure_data(request: Request):
         },
         {
             "id": str(uuid.uuid4()),
+            "user_id": user_id,
             "supplier_id": "intl_paper_001",
             "supplier_name": "International Paper",
             "category": "Purchased Goods & Services",
@@ -985,6 +992,7 @@ async def seed_measure_data(request: Request):
         },
         {
             "id": str(uuid.uuid4()),
+            "user_id": user_id,
             "supplier_id": "holcim_001",
             "supplier_name": "Holcim Ltd",
             "category": "Purchased Goods & Services",
@@ -1013,6 +1021,7 @@ async def seed_measure_data(request: Request):
         # Edge cases
         {
             "id": str(uuid.uuid4()),
+            "user_id": user_id,
             "supplier_id": "fedex_001",
             "supplier_name": "FedEx Corporation",
             "category": "Transport & Distribution",
@@ -1025,6 +1034,7 @@ async def seed_measure_data(request: Request):
     activities = [
         {
             "id": str(uuid.uuid4()),
+            "user_id": user_id,
             "supplier_id": "ups_001",
             "supplier_name": "UPS Logistics",
             "category": "Transport & Distribution",
