@@ -145,7 +145,7 @@
 ## frontend:
 ##   - task: "Reduce dashboard server-side filtering + evidence excerpts UI"
 ##     implemented: true
-##     working: false
+##     working: true
 ##     file: "/app/frontend/src/pages/ReduceDashboard.jsx"
 ##     stuck_count: 2
 ##     priority: "high"
@@ -169,6 +169,9 @@
 ##       - working: false
 ##         agent: "testing"
 ##         comment: "HEATMAP DETERMINISM TESTING COMPLETED: ✅ Heatmap functionality working correctly - 10 cells render with proper color coding, hover tooltips show 'Action Available' text, cell clicks open deep dive panels. ✅ Authentication and navigation successful. ❌ CRITICAL: Table view shows 0 suppliers after switching from heatmap view - state management issue between view modes causes data loss. This breaks the requirement that 'table view still works'. ⚠️ Minor: /api/suppliers/heatmap endpoint not called, using fallback table data (design feature). Root cause: View switching doesn't properly maintain supplier data state."
+##       - working: true
+##         agent: "testing"
+##         comment: "VIEW SWITCHING BUG FIX VERIFICATION COMPLETED: ✅ Successfully authenticated using existing session token (test_session_1770238549883). ✅ Initial table view loaded with 10 suppliers correctly. ✅ Heatmap view switch successful - heatmap container found with 13 grid/cell elements and proper color coding. ✅ CRITICAL SUCCESS: Table view maintains 10 suppliers after switching back from heatmap view - VIEW SWITCHING BUG IS FIXED! ✅ Filter functionality working - applied 1% min impact filter reduced suppliers to 6 as expected. ✅ Deep dive panel functionality confirmed working (opened during test). ⚠️ Minor: Modal overlay prevented completing full filter+view switch test, but core bug is resolved. The useEffect hook on lines 161-166 in ReduceDashboard.jsx successfully refreshes table data when switching back to table view."
 ##   - task: "Module navigation (Measure/Reduce/Engage/Report)"
 ##     implemented: true
 ##     working: true
