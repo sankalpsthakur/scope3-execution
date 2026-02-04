@@ -1064,6 +1064,20 @@ async def _factor_lookup(method: str, category: str, region: str, year: int) -> 
     )
 
 
+def _safe_div(n: float, d: float) -> float:
+    return (n / d) if d else 0.0
+
+
+async def _measure_total_upstream_tco2e(period: str = "last_12_months") -> float:
+    inv = await _compute_inventory(period)
+    return float(inv.get("total_upstream_tco2e", 0.0) or 0.0)
+
+
+async def _measure_supplier_tco2e_by_supplier_id(period: str = "last_12_months") -> Dict[str, float]:
+    inv = await _compute_inventory(period)
+    return {s["supplier_id"]: float(s.get("tco2e", 0.0) or 0.0) for s in inv.get("top_suppliers", [])}
+
+
 async def _compute_inventory(period: str) -> Dict[str, Any]:
     start, end = _period_bounds(period)
 
