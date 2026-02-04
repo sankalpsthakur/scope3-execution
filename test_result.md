@@ -198,6 +198,7 @@
 ##     - "Deep dive endpoint contract + citations + edge cases"
 ##     - "Reduce dashboard server-side filtering + evidence excerpts UI"
 ##     - "Module navigation (Measure/Reduce/Engage/Report)"
+##     - "New Measure module with baseline inventory and metrics"
 ##   stuck_tasks: []
 ##   test_all: true
 ##   test_priority: "high_first"
