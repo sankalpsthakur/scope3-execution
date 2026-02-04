@@ -62,6 +62,17 @@ export default function ReduceDashboard({ onGoToEngage }) {
     direction: "desc",
   });
   const [engagements, setEngagements] = useState({});
+  const [heatmapData, setHeatmapData] = useState([]);
+
+  const fetchHeatmap = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API}/suppliers/heatmap`, { withCredentials: true });
+      setHeatmapData(res.data.heatmap_data || []);
+    } catch (e) {
+      // Fallback to table data.
+    }
+  }, []);
+
 
   const [filters, setFilters] = useState({
     category: "all",
@@ -133,7 +144,8 @@ export default function ReduceDashboard({ onGoToEngage }) {
 
     runPipeline();
     fetchEngagements();
-  }, [fetchEngagements]);
+    fetchHeatmap();
+  }, [fetchEngagements, fetchHeatmap]);
 
   useEffect(() => {
     fetchFilteredSuppliers();
@@ -520,7 +532,7 @@ export default function ReduceDashboard({ onGoToEngage }) {
                 Click any cell to view AI recommendations. Color indicates intensity (Green = Low, Red = High)
               </p>
             </div>
-            <Heatmap data={sortedSuppliers} onCellClick={handleRowClick} />
+            <Heatmap data={heatmapData.length ? heatmapData : sortedSuppliers} onCellClick={handleRowClick} />
             <div className="p-4 border-t border-white/10 flex items-center gap-4">
               <span className="text-xs text-gray-500">Intensity Scale:</span>
               <div className="flex items-center gap-2">
