@@ -158,7 +158,7 @@ export default function ReduceDashboard({ onGoToEngage }) {
 
     runPipeline();
     fetchEngagements();
-  }, [fetchEngagements, fetchHeatmap]);
+  }, [fetchEngagements, fetchHeatmap, fetchFilteredSuppliers]);
 
   useEffect(() => {
     fetchFilteredSuppliers();
