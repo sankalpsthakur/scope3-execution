@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import secrets
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
