@@ -468,6 +468,12 @@ class Scope3ReduceAPITester:
             self.create_test_session()
             self.test_auth_endpoints()
             self.test_supplier_endpoints()
+            
+            # NEW FEATURE TESTS
+            self.test_filtering_endpoints()
+            self.test_engagement_endpoints()
+            self.test_pdf_export_endpoints()
+            
             self.test_ai_integration()
         else:
             print("❌ Failed to seed data, skipping authenticated tests")
