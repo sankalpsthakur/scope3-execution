@@ -194,6 +194,204 @@ class Scope3ReduceAPITester:
         # Test invalid supplier ID
         self.run_test("Get Deep Dive (Invalid ID)", "GET", "suppliers/invalid-id/deep-dive", 404)
 
+    def test_filtering_endpoints(self):
+        """Test NEW filtering functionality"""
+        print("\n" + "="*50)
+        print("TESTING NEW FILTERING ENDPOINTS")
+        print("="*50)
+        
+        # Test basic filter endpoint
+        success, filter_data = self.run_test("Get Filtered Suppliers (No Filters)", "GET", "suppliers/filter", 200)
+        
+        if success:
+            suppliers = filter_data.get('suppliers', [])
+            print(f"   Found {len(suppliers)} suppliers without filters")
+            
+            # Test category filter - should show only Transport & Distribution (3 suppliers)
+            success, transport_data = self.run_test(
+                "Filter by Category (Transport)", 
+                "GET", 
+                "suppliers/filter?category=Transport & Distribution", 
+                200
+            )
+            if success:
+                transport_suppliers = transport_data.get('suppliers', [])
+                print(f"   Transport & Distribution suppliers: {len(transport_suppliers)}")
+                if len(transport_suppliers) == 3:
+                    self.log_test("Category Filter Validation", True, "Correct count for Transport & Distribution")
+                else:
+                    self.log_test("Category Filter Validation", False, f"Expected 3, got {len(transport_suppliers)}")
+            
+            # Test rating filter - C-rated suppliers
+            success, c_rated_data = self.run_test(
+                "Filter by Rating (C)", 
+                "GET", 
+                "suppliers/filter?rating=C", 
+                200
+            )
+            if success:
+                c_suppliers = c_rated_data.get('suppliers', [])
+                print(f"   C-rated suppliers: {len(c_suppliers)}")
+                # Verify all returned suppliers have C rating
+                all_c_rated = all(s.get('cee_rating', '').startswith('C') for s in c_suppliers)
+                if all_c_rated:
+                    self.log_test("Rating Filter Validation", True, f"All {len(c_suppliers)} suppliers are C-rated")
+                else:
+                    self.log_test("Rating Filter Validation", False, "Some suppliers don't have C rating")
+            
+            # Test min impact filter - high impact suppliers (>= 3%)
+            success, high_impact_data = self.run_test(
+                "Filter by Min Impact (3%)", 
+                "GET", 
+                "suppliers/filter?min_impact=3.0", 
+                200
+            )
+            if success:
+                high_impact_suppliers = high_impact_data.get('suppliers', [])
+                print(f"   High impact suppliers (>=3%): {len(high_impact_suppliers)}")
+                # Verify all have impact >= 3%
+                all_high_impact = all(s.get('upstream_impact_pct', 0) >= 3.0 for s in high_impact_suppliers)
+                if all_high_impact:
+                    self.log_test("Min Impact Filter Validation", True, f"All {len(high_impact_suppliers)} suppliers have >=3% impact")
+                else:
+                    self.log_test("Min Impact Filter Validation", False, "Some suppliers have <3% impact")
+            
+            # Test min reduction filter
+            success, high_reduction_data = self.run_test(
+                "Filter by Min Reduction (25%)", 
+                "GET", 
+                "suppliers/filter?min_reduction=25.0", 
+                200
+            )
+            if success:
+                high_reduction_suppliers = high_reduction_data.get('suppliers', [])
+                print(f"   High reduction potential suppliers (>=25%): {len(high_reduction_suppliers)}")
+            
+            # Test combined filters
+            success, combined_data = self.run_test(
+                "Combined Filters", 
+                "GET", 
+                "suppliers/filter?category=Purchased Goods & Services&rating=C&min_impact=2.0", 
+                200
+            )
+            if success:
+                combined_suppliers = combined_data.get('suppliers', [])
+                print(f"   Combined filter results: {len(combined_suppliers)} suppliers")
+
+    def test_engagement_endpoints(self):
+        """Test NEW engagement tracking functionality"""
+        print("\n" + "="*50)
+        print("TESTING NEW ENGAGEMENT ENDPOINTS")
+        print("="*50)
+        
+        # Test get all engagements
+        success, engagements_data = self.run_test("Get All Engagements", "GET", "engagements", 200)
+        
+        if success:
+            engagements = engagements_data.get('engagements', [])
+            print(f"   Found {len(engagements)} existing engagements")
+        
+        # Get a supplier ID for testing
+        success, suppliers_data = self.run_test("Get Suppliers for Engagement Test", "GET", "suppliers", 200)
+        
+        if success and suppliers_data.get('suppliers'):
+            test_supplier_id = suppliers_data['suppliers'][0]['id']
+            supplier_name = suppliers_data['suppliers'][0]['supplier_name']
+            
+            print(f"   Testing engagement for: {supplier_name}")
+            
+            # Test get specific engagement (should return default if not exists)
+            success, engagement_data = self.run_test(
+                "Get Specific Engagement", 
+                "GET", 
+                f"engagements/{test_supplier_id}", 
+                200
+            )
+            
+            if success:
+                status = engagement_data.get('status', 'not_started')
+                print(f"   Current status: {status}")
+            
+            # Test update engagement status
+            update_data = {
+                "status": "in_progress",
+                "notes": "Started initial outreach via email",
+                "next_action_date": "2025-01-15"
+            }
+            
+            success, updated_engagement = self.run_test(
+                "Update Engagement Status", 
+                "PUT", 
+                f"engagements/{test_supplier_id}", 
+                200,
+                data=update_data
+            )
+            
+            if success:
+                new_status = updated_engagement.get('status')
+                notes = updated_engagement.get('notes')
+                if new_status == "in_progress":
+                    self.log_test("Engagement Status Update", True, f"Status updated to {new_status}")
+                    print(f"   Notes: {notes}")
+                else:
+                    self.log_test("Engagement Status Update", False, f"Expected in_progress, got {new_status}")
+            
+            # Test different status values
+            statuses_to_test = ["pending_response", "completed", "on_hold", "not_started"]
+            
+            for status in statuses_to_test:
+                update_data = {"status": status, "notes": f"Testing {status} status"}
+                success, _ = self.run_test(
+                    f"Update to {status}", 
+                    "PUT", 
+                    f"engagements/{test_supplier_id}", 
+                    200,
+                    data=update_data
+                )
+
+    def test_pdf_export_endpoints(self):
+        """Test NEW PDF export functionality"""
+        print("\n" + "="*50)
+        print("TESTING NEW PDF EXPORT ENDPOINTS")
+        print("="*50)
+        
+        # Get a supplier ID for testing
+        success, suppliers_data = self.run_test("Get Suppliers for PDF Test", "GET", "suppliers", 200)
+        
+        if success and suppliers_data.get('suppliers'):
+            test_supplier_id = suppliers_data['suppliers'][0]['id']
+            supplier_name = suppliers_data['suppliers'][0]['supplier_name']
+            
+            print(f"   Testing PDF export for: {supplier_name}")
+            
+            # Test PDF export endpoint
+            url = f"{self.api_url}/suppliers/{test_supplier_id}/export-pdf"
+            headers = {'Authorization': f'Bearer {self.session_token}'}
+            
+            try:
+                print(f"   Requesting PDF from: {url}")
+                response = requests.get(url, headers=headers, timeout=30)
+                
+                if response.status_code == 200:
+                    # Check if response is actually a PDF
+                    content_type = response.headers.get('content-type', '')
+                    content_length = len(response.content)
+                    
+                    if 'application/pdf' in content_type and content_length > 1000:
+                        self.log_test("PDF Export", True, f"PDF generated successfully ({content_length} bytes)")
+                        print(f"   PDF size: {content_length} bytes")
+                        print(f"   Content-Type: {content_type}")
+                    else:
+                        self.log_test("PDF Export", False, f"Invalid PDF response: {content_type}, {content_length} bytes")
+                else:
+                    self.log_test("PDF Export", False, f"HTTP {response.status_code}: {response.text[:200]}")
+                    
+            except Exception as e:
+                self.log_test("PDF Export", False, f"Request failed: {str(e)}")
+            
+            # Test PDF export with invalid supplier ID
+            self.run_test("PDF Export (Invalid ID)", "GET", "suppliers/invalid-id/export-pdf", 404)
+
     def test_ai_integration(self):
         """Test AI integration specifically"""
         print("\n" + "="*50)
