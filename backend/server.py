@@ -852,6 +852,382 @@ def generate_pdf_report(benchmark: dict, recommendation: dict) -> BytesIO:
 
 # ==================== MOCK DATA SEED (REALISTIC + EXPLANATORY) ====================
 
+
+# ==================== MEASURE: INVENTORY (MOCKED but audit-friendly) ====================
+
+def _period_bounds(period: str) -> Tuple[datetime, datetime]:
+    """Return [start, end] bounds in UTC for a few supported period shorthands."""
+    now = datetime.now(timezone.utc)
+    if period == "fy2024":
+        start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        end = datetime(2025, 1, 1, tzinfo=timezone.utc)
+        return start, end
+    if period == "last_12_months":
+        return now - timedelta(days=365), now
+    if period == "ytd":
+        start = datetime(now.year, 1, 1, tzinfo=timezone.utc)
+        return start, now
+    # default
+    return now - timedelta(days=365), now
+
+
+def _uncertainty_for_method(method: str) -> str:
+    # Simple science-based heuristic: spend-based is typically higher uncertainty.
+    if method == "activity":
+        return "medium"
+    return "high"
+
+
+def _quality_for_record(record: dict) -> str:
+    # Minimal: if missing factor match, quality low.
+    if record.get("factor_match") is False:
+        return "low"
+    if record.get("method") == "activity":
+        return "medium"
+    return "medium"
+
+
+@api_router.post("/measure/seed")
+async def seed_measure_data(request: Request):
+    """Seed realistic Measure inputs: purchases + activity + emission factors.
+
+    This is an audit-friendly mock:
+    - Purchases simulate general ledger spend lines
+    - Activities simulate logistics tonne-km and electricity kWh
+    - Emission factors include source, region, year, unit, version
+    """
+    await get_user_from_request(request)
+
+    await db.measure_purchases.delete_many({})
+    await db.measure_activity.delete_many({})
+    await db.measure_emission_factors.delete_many({})
+
+    factors = [
+        {
+            "id": "ef_spend_purchased_goods_us_2024_v1",
+            "method": "spend",
+            "category": "Purchased Goods & Services",
+            "region": "US",
+            "year": 2024,
+            "unit": "kgCO2e_per_usd",
+            "value": 0.35,
+            "source": "EXIOBASE (illustrative)",
+            "version": "v1",
+        },
+        {
+            "id": "ef_spend_fuel_energy_us_2024_v1",
+            "method": "spend",
+            "category": "Fuel & Energy Activities",
+            "region": "US",
+            "year": 2024,
+            "unit": "kgCO2e_per_usd",
+            "value": 0.50,
+            "source": "IEA / MRIO blend (illustrative)",
+            "version": "v1",
+        },
+        {
+            "id": "ef_spend_transport_us_2024_v1",
+            "method": "spend",
+            "category": "Transport & Distribution",
+            "region": "US",
+            "year": 2024,
+            "unit": "kgCO2e_per_usd",
+            "value": 0.22,
+            "source": "EPA / DEFRA blend (illustrative)",
+            "version": "v1",
+        },
+        {
+            "id": "ef_activity_freight_tkm_us_2024_v1",
+            "method": "activity",
+            "category": "Transport & Distribution",
+            "region": "US",
+            "year": 2024,
+            "unit": "kgCO2e_per_tonne_km",
+            "value": 0.062,
+            "source": "GLEC Framework (illustrative)",
+            "version": "v1",
+        },
+        {
+            "id": "ef_activity_electricity_kwh_us_2024_v1",
+            "method": "activity",
+            "category": "Fuel & Energy Activities",
+            "region": "US",
+            "year": 2024,
+            "unit": "kgCO2e_per_kwh",
+            "value": 0.38,
+            "source": "US eGRID (illustrative)",
+            "version": "v1",
+        },
+    ]
+
+    await db.measure_emission_factors.insert_many(factors)
+
+    # Align with Reduce suppliers seeded by /seed-data
+    # Use same supplier IDs from the Reduce benchmark seed pattern: {company_id}_001
+    purchases = [
+        {
+            "id": str(uuid.uuid4()),
+            "supplier_id": "ppg_001",
+            "supplier_name": "PPG Industries",
+            "category": "Purchased Goods & Services",
+            "date": "2024-06-30",
+            "amount_usd": 420_000_000,
+            "region": "US",
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "supplier_id": "intl_paper_001",
+            "supplier_name": "International Paper",
+            "category": "Purchased Goods & Services",
+            "date": "2024-05-20",
+            "amount_usd": 75_000_000,
+            "region": "US",
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "supplier_id": "holcim_001",
+            "supplier_name": "Holcim Ltd",
+            "category": "Purchased Goods & Services",
+            "date": "2024-04-12",
+            "amount_usd": 55_000_000,
+            "region": "US",
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "supplier_id": "dow_001",
+            "supplier_name": "Dow Inc",
+            "category": "Fuel & Energy Activities",
+            "date": "2024-07-02",
+            "amount_usd": 120_000_000,
+            "region": "US",
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "supplier_id": "ups_001",
+            "supplier_name": "UPS Logistics",
+            "category": "Transport & Distribution",
+            "date": "2024-03-01",
+            "amount_usd": 180_000_000,
+            "region": "US",
+        },
+        # Edge cases
+        {
+            "id": str(uuid.uuid4()),
+            "supplier_id": "fedex_001",
+            "supplier_name": "FedEx Corporation",
+            "category": "Transport & Distribution",
+            "date": "2024-02-01",
+            "amount_usd": 0,
+            "region": "US",
+        },
+    ]
+
+    activities = [
+        {
+            "id": str(uuid.uuid4()),
+            "supplier_id": "ups_001",
+            "supplier_name": "UPS Logistics",
+            "category": "Transport & Distribution",
+            "date": "2024-03-15",
+            "activity_type": "freight",
+            "unit": "tonne_km",
+            "quantity": 950_000_000,
+            "region": "US",
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "supplier_id": "dow_001",
+            "supplier_name": "Dow Inc",
+            "category": "Fuel & Energy Activities",
+            "date": "2024-07-01",
+            "activity_type": "electricity",
+            "unit": "kwh",
+            "quantity": 1_800_000_000,
+            "region": "US",
+        },
+    ]
+
+    await db.measure_purchases.insert_many(purchases)
+    await db.measure_activity.insert_many(activities)
+
+    return {
+        "message": "Measure mock data seeded",
+        "counts": {"emission_factors": len(factors), "purchases": len(purchases), "activities": len(activities)},
+        "note": "Spend-based + activity-based rows are seeded with factor provenance and simple uncertainty flags.",
+    }
+
+
+async def _factor_lookup(method: str, category: str, region: str, year: int) -> Optional[dict]:
+    return await db.measure_emission_factors.find_one(
+        {"method": method, "category": category, "region": region, "year": year},
+        {"_id": 0},
+    )
+
+
+async def _compute_inventory(period: str) -> Dict[str, Any]:
+    start, end = _period_bounds(period)
+
+    # NOTE: dates stored as strings for mock simplicity. Filter by prefix year for now.
+    year = 2024
+
+    purchases = await db.measure_purchases.find({}, {"_id": 0}).to_list(5000)
+    activities = await db.measure_activity.find({}, {"_id": 0}).to_list(5000)
+
+    line_items: List[Dict[str, Any]] = []
+
+    # Spend-based
+    for p in purchases:
+        amount = float(p.get("amount_usd", 0) or 0)
+        category = p.get("category")
+        region = p.get("region", "US")
+
+        factor = await _factor_lookup("spend", category, region, year)
+        if not factor:
+            line_items.append({
+                **p,
+                "method": "spend",
+                "tco2e": 0.0,
+                "factor_match": False,
+                "factor": None,
+                "uncertainty": _uncertainty_for_method("spend"),
+                "data_quality": "low",
+            })
+            continue
+
+        kg = amount * float(factor["value"])  # kgCO2e
+        tco2e = kg / 1000.0
+
+        line_items.append({
+            **p,
+            "method": "spend",
+            "tco2e": tco2e,
+            "factor_match": True,
+            "factor": factor,
+            "uncertainty": _uncertainty_for_method("spend"),
+            "data_quality": "medium",
+        })
+
+    # Activity-based
+    for a in activities:
+        qty = float(a.get("quantity", 0) or 0)
+        category = a.get("category")
+        region = a.get("region", "US")
+
+        factor = None
+        if a.get("unit") == "tonne_km":
+            factor = await _factor_lookup("activity", "Transport & Distribution", region, year)
+        elif a.get("unit") == "kwh":
+            factor = await _factor_lookup("activity", "Fuel & Energy Activities", region, year)
+
+        if not factor:
+            line_items.append({
+                **a,
+                "method": "activity",
+                "tco2e": 0.0,
+                "factor_match": False,
+                "factor": None,
+                "uncertainty": _uncertainty_for_method("activity"),
+                "data_quality": "low",
+            })
+            continue
+
+        kg = qty * float(factor["value"])
+        tco2e = kg / 1000.0
+
+        line_items.append({
+            **a,
+            "method": "activity",
+            "tco2e": tco2e,
+            "factor_match": True,
+            "factor": factor,
+            "uncertainty": _uncertainty_for_method("activity"),
+            "data_quality": "medium",
+        })
+
+    total = sum(li.get("tco2e", 0.0) for li in line_items)
+    matched = [li for li in line_items if li.get("factor_match")]
+    coverage = (sum(li.get("tco2e", 0.0) for li in matched) / total * 100.0) if total > 0 else 0.0
+
+    by_category: Dict[str, float] = {}
+    for li in line_items:
+        cat = li.get("category")
+        by_category[cat] = by_category.get(cat, 0.0) + float(li.get("tco2e", 0.0) or 0)
+
+    # Supplier rollups
+    supplier_rollup: Dict[str, Dict[str, Any]] = {}
+    for li in line_items:
+        sid = li.get("supplier_id")
+        if not sid:
+            continue
+        rec = supplier_rollup.setdefault(sid, {
+            "supplier_id": sid,
+            "supplier_name": li.get("supplier_name"),
+            "tco2e": 0.0,
+            "spend_usd": 0.0,
+            "activity_tco2e": 0.0,
+            "spend_tco2e": 0.0,
+            "uncertainty": "high",
+            "data_quality": "medium",
+        })
+
+        rec["tco2e"] += float(li.get("tco2e", 0.0) or 0)
+        if li.get("method") == "spend":
+            rec["spend_usd"] += float(li.get("amount_usd", 0.0) or 0)
+            rec["spend_tco2e"] += float(li.get("tco2e", 0.0) or 0)
+        else:
+            rec["activity_tco2e"] += float(li.get("tco2e", 0.0) or 0)
+
+        # escalate quality if any low lines
+        if li.get("data_quality") == "low":
+            rec["data_quality"] = "low"
+        # uncertainty: activity-only suppliers become medium
+        if rec["spend_tco2e"] == 0 and rec["activity_tco2e"] > 0:
+            rec["uncertainty"] = "medium"
+
+    suppliers_sorted = sorted(supplier_rollup.values(), key=lambda r: r.get("tco2e", 0), reverse=True)
+
+    # Intensity (tCO2e per $) for suppliers that have spend
+    for s in suppliers_sorted:
+        spend = float(s.get("spend_usd", 0.0) or 0)
+        s["intensity_tco2e_per_usd"] = (s.get("tco2e", 0.0) / spend) if spend > 0 else None
+
+    return {
+        "period": period,
+        "total_upstream_tco2e": total,
+        "coverage_pct": round(coverage, 1),
+        "category_breakdown": [{"category": k, "tco2e": round(v, 2)} for k, v in sorted(by_category.items(), key=lambda x: x[1], reverse=True)],
+        "top_suppliers": [
+            {
+                "supplier_id": s["supplier_id"],
+                "supplier_name": s["supplier_name"],
+                "tco2e": round(s["tco2e"], 2),
+                "spend_usd": round(s["spend_usd"], 2),
+                "intensity_tco2e_per_usd": s["intensity_tco2e_per_usd"],
+                "uncertainty": s["uncertainty"],
+                "data_quality": s["data_quality"],
+            }
+            for s in suppliers_sorted[:20]
+        ],
+        "notes": {
+            "methodology": "Spend-based + activity-based. Factors applied by (method, category, region, year).",
+            "uncertainty_model": "Spend=high uncertainty; activity=medium; missing factors=low data quality.",
+        },
+    }
+
+
+@api_router.get("/measure/overview")
+async def measure_overview(request: Request, period: str = "last_12_months"):
+    await get_user_from_request(request)
+    return await _compute_inventory(period)
+
+
+@api_router.get("/measure/suppliers")
+async def measure_suppliers(request: Request, period: str = "last_12_months"):
+    await get_user_from_request(request)
+    inv = await _compute_inventory(period)
+    return {"period": inv["period"], "top_suppliers": inv["top_suppliers"], "coverage_pct": inv["coverage_pct"]}
+
+
 @api_router.post("/seed-data")
 async def seed_mock_data():
     """Seed the database with realistic mock benchmarks + disclosure chunks.
