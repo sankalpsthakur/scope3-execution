@@ -1097,8 +1097,10 @@ async def _compute_inventory(period: str) -> Dict[str, Any]:
     # NOTE: dates stored as strings for mock simplicity. Filter by prefix year for now.
     year = 2024
 
-    purchases = await db.measure_purchases.find({}, {"_id": 0}).to_list(5000)
-    activities = await db.measure_activity.find({}, {"_id": 0}).to_list(5000)
+    # Partition by user for MVP (multi-tenant readiness)
+    user_id = "_global_demo"
+    purchases = await db.measure_purchases.find({"user_id": user_id}, {"_id": 0}).to_list(5000)
+    activities = await db.measure_activity.find({"user_id": user_id}, {"_id": 0}).to_list(5000)
 
     line_items: List[Dict[str, Any]] = []
 
