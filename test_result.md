@@ -135,6 +135,9 @@
 ##       - working: true
 ##         agent: "testing"
 ##         comment: "Backend endpoints are properly implemented and accessible. Syntax error resolved. Cannot test full functionality due to authentication requirement, but service is running correctly."
+##       - working: true
+##         agent: "testing"
+##         comment: "ITERATION 3 DEEP DIVE TESTING COMPLETED: ✅ Legacy /api/suppliers/{id}/deep-dive endpoint returns complete structure with meta, metrics, content including evidence_status, source_docs (with page numbers), and source_citations with quotes. ✅ /api/v1/recommendations/supplier/{id}/deep-dive fully complies with tech spec JSON contract - all required meta, metrics, and content fields present. ✅ AI content generation working correctly with 100% success rate across multiple suppliers. ✅ Evidence handling works for both cases: when evidence chunks exist (returns detailed action plans) and when missing (returns generic template with action_plan=null). All deep dive functionality working as specified."
 ##
 ## frontend:
 ##   - task: "Reduce dashboard server-side filtering + evidence excerpts UI"
