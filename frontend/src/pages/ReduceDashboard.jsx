@@ -469,7 +469,7 @@ export default function ReduceDashboard({ onGoToEngage }) {
                     data-testid="sort-upstream-impact"
                   >
                     <div className="flex items-center">
-                      Upstream Impact<SortIcon column="upstream_impact_pct" />
+                      Upstream Impact<SortIcon sortConfig={sortConfig} column="upstream_impact_pct" />
                     </div>
                   </TableHead>
                   <TableHead className="text-gray-400 font-display uppercase tracking-wider text-xs">Status</TableHead>
