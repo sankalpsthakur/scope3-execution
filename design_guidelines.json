@@ -1,0 +1,164 @@
+{
+  "identity": {
+    "name": "E1",
+    "persona": "Anti-AI Creative Designer",
+    "principles": [
+      "Fusion over Imitation",
+      "Emotion First",
+      "Content is King",
+      "Zoom In",
+      "Negative Space",
+      "Contrast"
+    ]
+  },
+  "project": {
+    "name": "Scope 3 Reduce Module",
+    "theme": "Tactical Sustainability (Trading Floor meets Nature)",
+    "metaphor": "Mission Control for Earth",
+    "target_audience": "Procurement Officers, CSOs, Supply Chain Managers"
+  },
+  "typography": {
+    "strategy": "The Performance Pro",
+    "fonts": {
+      "headings": {
+        "family": "Barlow Condensed",
+        "weights": ["600", "700", "800"],
+        "usage": "Uppercase, tracking-tight, used for KPIs, Section Headers, and Data Labels."
+      },
+      "body": {
+        "family": "Manrope",
+        "weights": ["400", "500"],
+        "usage": "High legibility for data tables and narrative text."
+      },
+      "mono": {
+        "family": "JetBrains Mono",
+        "weights": ["400"],
+        "usage": "For specific data values, contract clauses, and code snippets."
+      }
+    },
+    "installation": "Import from Google Fonts in index.css: @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Manrope:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap');"
+  },
+  "colors": {
+    "palette": {
+      "mode": "dark",
+      "background": {
+        "default": "#0A0A0A",
+        "paper": "#121212",
+        "subtle": "#18181B"
+      },
+      "primary": {
+        "main": "#22C55E",
+        "glow": "0 0 20px rgba(34, 197, 94, 0.5)",
+        "text": "#F0FDF4"
+      },
+      "secondary": {
+        "main": "#0EA5E9",
+        "text": "#F0F9FF"
+      },
+      "accent": {
+        "warning": "#F59E0B",
+        "danger": "#EF4444",
+        "neutral": "#737373"
+      },
+      "border": {
+        "default": "rgba(255, 255, 255, 0.1)",
+        "active": "rgba(34, 197, 94, 0.3)"
+      }
+    },
+    "rules": [
+      "Never use pure black (#000000). Use #0A0A0A.",
+      "Data visualizations must use neon accents against dark backgrounds.",
+      "Text contrast must meet APCA standards."
+    ]
+  },
+  "layout": {
+    "grid_system": {
+      "dashboard": "Mode B: High Density Grid (Bento)",
+      "landing": "Mode A: The Tetris Grid"
+    },
+    "spacing": {
+      "scale": "Generous (2x standard)",
+      "container_padding": "p-6 or p-8 for cards"
+    },
+    "surfaces": {
+      "cards": "Flat background (#121212) with 1px border (white/10). No shadow by default.",
+      "overlays": "Glassmorphism (The Crystal Variant): bg-black/60 backdrop-blur-xl border-white/10.",
+      "tables": "Grid Borders: border-collapse, border-r border-b border-white/5."
+    }
+  },
+  "components": {
+    "buttons": {
+      "style": "Sharp edges or small radius (rounded-sm).",
+      "primary": "bg-primary text-black font-bold uppercase tracking-wider hover:bg-primary/90 hover:shadow-[0_0_15px_rgba(34,197,94,0.4)] transition-all",
+      "secondary": "border border-white/20 hover:bg-white/5 text-white"
+    },
+    "cards": {
+      "style": "Data-dense. Header with metric, body with chart/list. Use 'Grid Borders' style."
+    },
+    "modals": {
+      "style": "Slide-out from right (Sheet component). Glassmorphism background. 50% to 80% width."
+    },
+    "charts": {
+      "library": "Recharts (via Shadcn Charts)",
+      "style": "Minimalist. Hide grid lines or make them very subtle. Use neon strokes."
+    },
+    "heatmap": {
+      "description": "A grid of colored squares representing carbon intensity. Green (Low) to Red (High).",
+      "interaction": "Hover to see specific supplier details."
+    }
+  },
+  "visual_enhancers": {
+    "textures": "Subtle noise overlay on the main background to reduce banding.",
+    "motion": {
+      "hover": "translate-y-[-2px] duration-200",
+      "entrance": "staggered fade-in-up",
+      "micro": "Icon pulses on hover."
+    },
+    "icons": {
+      "library": "Lucide React",
+      "style": "Stroke width 1.5px. Small sizes (w-4 h-4) for density."
+    }
+  },
+  "assets": {
+    "images": {
+      "landing_hero": {
+        "url": "https://images.unsplash.com/photo-1757266706098-e3f2e47f5e6d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHwyfHxpbmR1c3RyaWFsJTIwZmFjdG9yeSUyMG5hdHVyZSUyMGNvbnRyYXN0fGVufDB8fHx8MTc3MDIzMTQ4Nnww&ixlib=rb-4.1.0&q=85",
+        "alt": "Industrial landscape with nature contrast"
+      },
+      "peer_group": {
+        "url": "https://images.unsplash.com/photo-1758691736975-9f7f643d178e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwxfHxjb3Jwb3JhdGUlMjBvZmZpY2UlMjBtZWV0aW5nJTIwZGl2ZXJzZXxlbnwwfHx8fDE3NzAyMzE0OTJ8MA&ixlib=rb-4.1.0&q=85",
+        "alt": "Diverse corporate team"
+      }
+    }
+  },
+  "instructions_to_main_agent": [
+    "1. SETUP: Install 'Barlow Condensed' and 'Manrope' fonts immediately.",
+    "2. THEME: Force Dark Mode by default. Add 'dark' class to html/body.",
+    "3. LAYOUT: Build the 'Main Dashboard' using a CSS Grid (Bento style). Do not use a simple vertical stack.",
+    "4. COMPONENT: Create a 'SupplierRow' component that expands or triggers the 'DeepDivePanel'.",
+    "5. AI FEATURE: The 'Deep Dive' panel must feel like an AI insight. Use a 'sparkle' icon or a glowing border effect to denote AI-generated content.",
+    "6. DATA: Mock at least 10 rows of supplier data with: Organization Name, Category, CEE Rating (A-F), Reduction Potential (%), Upstream Impact (%).",
+    "7. AUTH: Mock the Google OAuth login on the landing page. Just a button that redirects to dashboard.",
+    "8. CRITICAL: Ensure all text has sufficient contrast against the dark background. Use text-gray-300 for secondary text, not text-gray-500."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy",
+    "Use glass-morphism effects with backdrop filters (12-24px blur)",
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯📚🎭🎬🎪🎉🎊🎁🎀🎂🍰🎈🎨🎰💰💵💳🏦💎🪙💸🤑📊📈📉💹🔢🏆🥇 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN",
+    "Prioritize using pre-existing components from src/components/ui when applicable",
+    "Create new components that match the style and conventions of existing components when needed",
+    "Examine existing components to understand the project's component patterns before creating new ones",
+    "Components MUST use named exports (export const ComponentName = ...)",
+    "Pages MUST use default exports (export default function PageName() {...})",
+    "Use sonner for toasts. Sonner component are located in /app/src/components/ui/sonner.tsx"
+  ]
+}
