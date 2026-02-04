@@ -225,8 +225,6 @@ async def test_login(request: Request, response: Response):
     await _log_audit(test_user["user_id"], "auth.test_login")
     return {"user": {k: test_user[k] for k in ["user_id", "email", "name", "picture"]}, "session_token": session_token}
 
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 @api_router.get("/auth/me")
 async def get_current_user(request: Request):
