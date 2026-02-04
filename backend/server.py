@@ -283,6 +283,292 @@ _rate_state: Dict[str, List[float]] = {}
 
 
 def _rate_limit(key: str, limit: int, window_seconds: int = 60) -> None:
+
+
+# ==================== EPIC D (MVP): INGESTION + CHUNKING + "VECTOR" STORE ====================
+
+UPLOAD_DIR = ROOT_DIR / "uploaded_reports"
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+
+def _clean_text(s: str) -> str:
+    s = re.sub(r"\s+", " ", s or " ").strip()
+    return s
+
+
+def _tokenize(s: str) -> List[str]:
+    s = (s or "").lower()
+    s = re.sub(r"[^a-z0-9\s\-]", " ", s)
+    tokens = [t for t in s.split() if len(t) > 2]
+    return tokens
+
+
+def _hash_id(*parts: str) -> str:
+    h = hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+    return h[:24]
+
+
+def _embed_mock(text: str, dim: int = 128) -> List[float]:
+    """Deterministic lightweight embedding-like vector.
+
+    This avoids calling external embedding services and is sufficient for MVP retrieval.
+    """
+    vec = [0.0] * dim
+    for tok in _tokenize(text):
+        idx = int(hashlib.md5(tok.encode("utf-8")).hexdigest(), 16) % dim
+        vec[idx] += 1.0
+    # L2 normalize
+    norm = math.sqrt(sum(v * v for v in vec)) or 1.0
+    return [v / norm for v in vec]
+
+
+def _cosine(a: List[float], b: List[float]) -> float:
+    if not a or not b:
+        return 0.0
+    return float(sum(x * y for x, y in zip(a, b)))
+
+
+def _chunk_text(text: str, chunk_size: int = 1200, overlap: int = 120) -> List[str]:
+    text = _clean_text(text)
+    if not text:
+        return []
+    chunks = []
+    i = 0
+    while i < len(text):
+        end = min(len(text), i + chunk_size)
+        chunks.append(text[i:end])
+        if end == len(text):
+            break
+        i = max(0, end - overlap)
+    return chunks
+
+
+async def _vector_search(tenant_id: str, company_id: str, category: str, query: str, k: int = 6) -> List[Dict[str, Any]]:
+    qvec = _embed_mock(query)
+    docs = await db.disclosure_chunks.find(
+        {"tenant_id": tenant_id, "company_id": company_id, "category": category},
+        {"_id": 0},
+    ).to_list(200)
+
+    scored = []
+    for d in docs:
+        score = _cosine(qvec, d.get("embedding", []))
+        scored.append((score, d))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [
+        {**d, "score": round(float(score), 4)}
+        for score, d in scored[:k]
+        if score > 0
+    ]
+
+
+@api_router.post("/pipeline/sources/seed")
+async def seed_disclosure_sources(request: Request):
+    """Seed realistic disclosure sources + reports for peers (MVP).
+
+    Creates:
+    - disclosure_sources: (peer_id, category, doc_url/title)
+    - disclosure_docs: metadata (doc_id)
+
+    Then chunks are created via /api/pipeline/ingest.
+    """
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    await db.disclosure_sources.delete_many({"tenant_id": tenant_id})
+    await db.disclosure_docs.delete_many({"tenant_id": tenant_id})
+
+    # Realistic public-report URLs would be used in production; for MVP we use seeded docs.
+    sources = [
+        {
+            "id": _hash_id(tenant_id, "sika", "pgs"),
+            "tenant_id": tenant_id,
+            "company_id": "sika_001",
+            "category": "Purchased Goods & Services",
+            "title": "Sika Sustainability Report 2023 (Seeded)",
+            "url": "seed://sika/2023",
+        },
+        {
+            "id": _hash_id(tenant_id, "dhl", "tnd"),
+            "tenant_id": tenant_id,
+            "company_id": "dhl_001",
+            "category": "Transport & Distribution",
+            "title": "DHL ESG Report 2023 (Seeded)",
+            "url": "seed://dhl/2023",
+        },
+        {
+            "id": _hash_id(tenant_id, "basf", "fea"),
+            "tenant_id": tenant_id,
+            "company_id": "basf_001",
+            "category": "Fuel & Energy Activities",
+            "title": "BASF Annual Report 2023 (Seeded)",
+            "url": "seed://basf/2023",
+        },
+    ]
+
+    docs = [
+        {
+            "doc_id": _hash_id(tenant_id, "doc", "sika", "2023"),
+            "tenant_id": tenant_id,
+            "company_id": "sika_001",
+            "title": "Sika Sustainability Report 2023",
+            "url": "seed://sika/2023",
+            "content_type": "text",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+        {
+            "doc_id": _hash_id(tenant_id, "doc", "dhl", "2023"),
+            "tenant_id": tenant_id,
+            "company_id": "dhl_001",
+            "title": "DHL ESG Report 2023",
+            "url": "seed://dhl/2023",
+            "content_type": "text",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+        {
+            "doc_id": _hash_id(tenant_id, "doc", "basf", "2023"),
+            "tenant_id": tenant_id,
+            "company_id": "basf_001",
+            "title": "BASF Annual Report 2023",
+            "url": "seed://basf/2023",
+            "content_type": "text",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+    ]
+
+    await db.disclosure_sources.insert_many(sources)
+    await db.disclosure_docs.insert_many(docs)
+
+    return {"message": "Disclosure sources seeded", "sources": len(sources), "docs": len(docs)}
+
+
+async def _seed_doc_text(url: str) -> str:
+    # Seeded corpus (realistic excerpts; in production this would be parsed from PDFs)
+    if url.startswith("seed://sika"):
+        return """
+        [Page 45] In 2022/2023, Sika reduced product carbon intensity by expanding bio-based polymer inputs and increasing post-consumer recycled (PCR) content in packaging to 80%.
+        [Page 46] Sika implemented supplier specifications requiring minimum recycled content thresholds and audited tier-2 chemical inputs for lifecycle emissions hotspots.
+        [Page 47] Procurement introduced contractual recycled-content requirements and supplier scorecards, improving traceability for key raw materials.
+        """
+    if url.startswith("seed://dhl"):
+        return """
+        [Page 12] DHL deployed electric delivery vehicles in dense urban routes and used route-optimization software to reduce empty miles and fuel burn.
+        [Page 13] For long-haul air freight, DHL increased Sustainable Aviation Fuel (SAF) procurement and shifted eligible lanes to intermodal rail alternatives.
+        [Page 14] DHL required carriers to provide fuel and distance activity data, enabling shipment-level carbon accounting.
+        """
+    if url.startswith("seed://basf"):
+        return """
+        [Page 88] BASF expanded renewable electricity procurement via Power Purchase Agreements (PPAs) and electrified steam generation to reduce upstream energy intensity.
+        [Page 89] BASF implemented heat integration and process optimization in energy-intensive units, prioritizing sites with highest marginal abatement potential.
+        [Page 90] BASF updated supplier engagement programs to request energy procurement disclosure and site-level electricity mix.
+        """
+    return ""
+
+
+@api_router.post("/pipeline/ingest")
+async def ingest_disclosures(request: Request):
+    """MVP ingestion: reads disclosure_sources and produces chunk + embedding records."""
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    _rate_limit(f"pipeline_ingest:{tenant_id}", limit=6, window_seconds=60)
+
+    sources = await db.disclosure_sources.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(200)
+    if not sources:
+        return {"message": "No sources found. Seed sources first.", "chunks_created": 0}
+
+    # Clear previous tenant chunks
+    await db.disclosure_chunks.delete_many({"tenant_id": tenant_id})
+
+    created = 0
+    for s in sources:
+        raw = await _seed_doc_text(s["url"])
+        # Split by the embedded [Page XX] tags to create page-level chunks
+        parts = re.split(r"\[Page\s+(\d+)\]", raw)
+        # parts: [prefix, page, text, page, text...]
+        page_pairs = []
+        if len(parts) >= 3:
+            i = 1
+            while i < len(parts) - 1:
+                page = parts[i]
+                text = parts[i + 1]
+                page_pairs.append((int(page), _clean_text(text)))
+                i += 2
+        else:
+            # fallback single chunk
+            page_pairs = [(1, _clean_text(raw))]
+
+        for page, page_text in page_pairs:
+            for chunk in _chunk_text(page_text, chunk_size=900, overlap=80):
+                doc = {
+                    "id": _hash_id(tenant_id, s["company_id"], s["category"], s["url"], str(page), chunk[:64]),
+                    "tenant_id": tenant_id,
+                    "company_id": s["company_id"],
+                    "category": s["category"],
+                    "title": s["title"],
+                    "url": s["url"],
+                    "page": page,
+                    "excerpt": chunk,
+                    "embedding": _embed_mock(chunk),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+                await db.disclosure_chunks.insert_one(doc)
+                created += 1
+
+    await _log_audit(tenant_id, "pipeline.ingest", {"chunks_created": created})
+    return {"message": "Ingestion complete", "chunks_created": created}
+
+
+@api_router.post("/pipeline/generate")
+async def generate_recommendations_batch(request: Request):
+    """MVP generation: for each benchmark, retrieve chunks and generate cached recommendations."""
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    _rate_limit(f"pipeline_generate:{tenant_id}", limit=4, window_seconds=60)
+
+    benchmarks = await db.supplier_benchmarks.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(500)
+    if not benchmarks:
+        return {"message": "No benchmarks found. Run /api/pipeline/run first.", "generated": 0}
+
+    generated = 0
+    for b in benchmarks:
+        # Skip leaders
+        if float(b.get("supplier_intensity", 0)) <= float(b.get("peer_intensity", 0)):
+            continue
+
+        query = f"{b.get('peer_name','')} {b.get('category','')} emissions reduction actions"
+        retrieved = await _vector_search(tenant_id, b["peer_id"], b["category"], query, k=6)
+
+        if not retrieved:
+            rec = build_generic_recommendation_template(b, "missing_public_report")
+            rec["tenant_id"] = tenant_id
+            await db.recommendation_content.replace_one(
+                {"benchmark_id": b["id"], "tenant_id": tenant_id},
+                {**rec, "benchmark_id": b["id"], "tenant_id": tenant_id},
+                upsert=True,
+            )
+            continue
+
+        raw_context = "\n\n".join([f"[Pg {r.get('page')}] {r.get('excerpt')}" for r in retrieved])
+        citations = [
+            {"title": r.get("title"), "url": r.get("url"), "page": str(r.get("page")), "quote": r.get("excerpt")}
+            for r in retrieved
+        ]
+
+        rec = await generate_ai_recommendation(b, raw_context, citations)
+        rec["tenant_id"] = tenant_id
+        await db.recommendation_content.replace_one(
+            {"benchmark_id": b["id"], "tenant_id": tenant_id},
+            {**rec, "benchmark_id": b["id"], "tenant_id": tenant_id},
+            upsert=True,
+        )
+        generated += 1
+
+    await _log_audit(tenant_id, "pipeline.generate", {"generated": generated})
+    return {"message": "Batch generation complete", "generated": generated}
+
     """Very small in-memory rate limiter (single-process)."""
     import time
 
