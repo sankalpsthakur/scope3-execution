@@ -327,13 +327,32 @@ export const DeepDivePanel = ({ supplier, isOpen, onClose, onEngagementUpdate, o
                 </div>
 
                 <div className="metric-card p-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className="w-4 h-4 text-gray-500" />
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">Feasibility Timeline</p>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-gray-500" />
+                      <p className="text-xs text-gray-500 uppercase tracking-wider">Feasibility Timeline</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (onGoToEngage && supplier) onGoToEngage(supplier.id);
+                      }}
+                      className="text-gray-400 hover:text-white h-7 px-2"
+                      data-testid="go-to-engage-btn"
+                    >
+                      <Calendar className="w-4 h-4 mr-1" />
+                      Engage
+                    </Button>
                   </div>
                   <p className="font-display font-bold text-white text-lg">
                     {deepDive.content.feasibility_timeline}
                   </p>
+                  {deepDive?.content?.evidence_status && deepDive.content.evidence_status !== "ok" && (
+                    <p className="text-xs text-amber-400 mt-2">
+                      Evidence status: {deepDive.content.evidence_status.replace(/_/g, " ")}. Actions may be unavailable.
+                    </p>
+                  )}
                 </div>
 
                 <div>
