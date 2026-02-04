@@ -47,8 +47,8 @@ export default function Dashboard() {
   
   // Filter states
   const [filters, setFilters] = useState({
-    category: "",
-    rating: "",
+    category: "all",
+    rating: "all",
     minImpact: "",
     minReduction: ""
   });
