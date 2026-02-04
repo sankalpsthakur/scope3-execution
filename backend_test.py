@@ -112,7 +112,7 @@ class Scope3ReduceAPITester:
         print("="*50)
         
         # Use the session token created in MongoDB
-        self.session_token = "test_session_1770232573942"
+        self.session_token = "test_session_1770232854297"
         
         print(f"   Using MongoDB session token: {self.session_token}")
         return True
