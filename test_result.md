@@ -244,7 +244,7 @@
 ##
 ##   - task: "Deterministic test auth for E2E (no OAuth dependency)"
 ##     implemented: true
-##     working: "true"
+##     working: true
 ##     file: "/app/backend/server.py", "/app/backend/.env"
 ##     stuck_count: 0
 ##     priority: "high"
@@ -253,6 +253,9 @@
 ##       - working: "true"
 ##         agent: "main"
 ##         comment: "Added /api/auth/test-login gated by TEST_MODE + X-Test-Auth header for Playwright deterministic auth."
+##       - working: true
+##         agent: "testing"
+##         comment: "DETERMINISTIC AUTH COOKIE PERSISTENCE FIXED: ✅ Identified and resolved critical bug - SameSite=none without Secure=true prevented cookie persistence on localhost. ✅ Changed SameSite to 'lax' in /api/auth/test-login endpoint (server.py line 228). ✅ Authentication flow now working: POST /api/auth/test-login sets persistent cookie, GET /api/auth/me succeeds with cookie auth, /dashboard loads and Reduce table populates with 5 suppliers. ✅ Cookie attributes verified: SameSite=Lax, Secure=False, HttpOnly=True, Domain=localhost. ✅ Deterministic auth working without OAuth dependency for automated testing."
 ##   stuck_tasks:
 ##     - "Reduce dashboard server-side filtering + evidence excerpts UI"
 ##   test_all: true
