@@ -142,11 +142,11 @@
 ## frontend:
 ##   - task: "Reduce dashboard server-side filtering + evidence excerpts UI"
 ##     implemented: true
-##     working: false
+##     working: true
 ##     file: "/app/frontend/src/pages/ReduceDashboard.jsx"
 ##     stuck_count: 1
 ##     priority: "high"
-##     needs_retesting: true
+##     needs_retesting: false
 ##     status_history:
 ##       - working: "NA"
 ##         agent: "main"
@@ -160,6 +160,9 @@
 ##       - working: false
 ##         agent: "testing"
 ##         comment: "CRITICAL REGRESSION: Reduce table completely empty (0 suppliers) after multi-tenant partitioning updates. Frontend UI loads correctly but backend returns no data. Root cause: seed_mock_data() function uses hardcoded measure_user_id='_global_demo' but test user data is partitioned under different user_id. This breaks upstream_impact_pct calculation causing all suppliers to be filtered out by upstream_impact_pct > 0 condition. Deep dive and PDF export cannot be tested due to empty table."
+##       - working: true
+##         agent: "testing"
+##         comment: "REGRESSION RESOLVED: ✅ Backend fix applied - seed_mock_data() now uses current user's measure_user_id instead of hardcoded '_global_demo'. ✅ Suppliers table now populates correctly with 10 suppliers after clearing default filters. ✅ Deep dive panel opens and displays complete content including narrative, recommendations, and sources. ✅ All core Reduce functionality restored and working. ⚠️ Minor: Default filters are restrictive - users need to clear filters to see all suppliers initially."
 ##   - task: "Module navigation (Measure/Reduce/Engage/Report)"
 ##     implemented: true
 ##     working: true
