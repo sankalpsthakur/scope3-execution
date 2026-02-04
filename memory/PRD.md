@@ -68,6 +68,9 @@ Frontend (React + Tailwind + Shadcn) → Backend (FastAPI) → MongoDB
 - [x] Contract clause generation
 - [x] Copy-to-clipboard functionality
 - [x] Google OAuth authentication
+- [x] **NEW: PDF Export** - Download recommendations as formatted PDF
+- [x] **NEW: Engagement Tracking** - Track supplier engagement status (not_started, in_progress, pending_response, completed, on_hold)
+- [x] **NEW: Data Filtering** - Filter by category, CEE rating, min upstream impact, min reduction potential
 
 ### P1 (Backlog)
 - [ ] Export recommendations to PDF
