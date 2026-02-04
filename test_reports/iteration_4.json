@@ -1,0 +1,35 @@
+{
+  "test_iteration": 4,
+  "timestamp": "2026-02-04T23:07:00Z",
+  "scope": "Measure MVP + Heatmap determinism + deterministic E2E auth + tenant partitioning + prod readiness helpers",
+  "status": "PASS",
+  "highlights": [
+    "Measure module is now populated (spend-based + activity-based baseline)",
+    "Heatmap now uses dedicated endpoint and remains deterministic when switching views",
+    "Deterministic test auth added to remove OAuth dependency for automated E2E",
+    "Tenant partitioning applied to Reduce + Measure; audit logging + basic rate limiting added"
+  ],
+  "tests": {
+    "frontend_e2e": {
+      "result": "PASS",
+      "notes": [
+        "Authenticated via /api/auth/test-login",
+        "Reduce table loads",
+        "Measure loads with totals, breakdown, intensity, top suppliers",
+        "Heatmap renders cells and deep dive opens"
+      ]
+    },
+    "backend_regression": {
+      "result": "PASS",
+      "notes": [
+        "pipeline/run seeds Measure + Reduce",
+        "suppliers/filter/heatmap endpoints return non-empty for tenant",
+        "deep-dive and export-pdf work under tenant partitioning"
+      ]
+    }
+  },
+  "known_remaining_gaps": [
+    "Epic D real ingestion + vector DB + RAG over real disclosures not implemented (requires vendor choices)",
+    "Full production readiness: persistent rate limit store, encryption-at-rest for document storage, org-level multi-tenancy, observability dashboards"
+  ]
+}
