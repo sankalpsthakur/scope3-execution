@@ -1107,7 +1107,7 @@ async def get_engagement(supplier_id: str, request: Request):
 @api_router.put("/engagements/{supplier_id}")
 async def update_engagement(supplier_id: str, update: EngagementUpdate, request: Request):
     user = await get_user_from_request(request)
-    _rate_limit(f"engagement:{user['user_id']}", limit=30, window_seconds=60)
+    await _rate_limit_persistent(user["user_id"], action="engagement", limit=30, window_seconds=60)
 
     existing = await db.supplier_engagements.find_one({"user_id": user["user_id"], "supplier_id": supplier_id})
 
