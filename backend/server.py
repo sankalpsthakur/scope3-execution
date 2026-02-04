@@ -241,6 +241,37 @@ async def get_current_user(request: Request):
         if auth_header and auth_header.startswith("Bearer "):
             session_token = auth_header.split(" ")[1]
 
+
+
+# ==================== EPIC I (MVP): MONGO-BACKED RATE LIMIT (TTL) ====================
+
+async def _rate_limit_persistent(tenant_id: str, action: str, limit: int, window_seconds: int = 60) -> None:
+    """Mongo-backed rate limiting with TTL (works across restarts).
+
+    Stores one document per hit; TTL deletes old hits automatically.
+    """
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(seconds=window_seconds)
+
+    await db.rate_limit_hits.create_index([("expires_at", 1)], expireAfterSeconds=0)
+
+    # count recent
+    recent = await db.rate_limit_hits.count_documents(
+        {"tenant_id": tenant_id, "action": action, "created_at": {"$gte": cutoff.isoformat()}}
+    )
+    if recent >= limit:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+    await db.rate_limit_hits.insert_one(
+        {
+            "id": str(uuid.uuid4()),
+            "tenant_id": tenant_id,
+            "action": action,
+            "created_at": now.isoformat(),
+            "expires_at": (now + timedelta(seconds=window_seconds)).isoformat(),
+        }
+    )
+
     if not session_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
