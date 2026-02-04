@@ -1081,8 +1081,8 @@ def _safe_div(n: float, d: float) -> float:
     return (n / d) if d else 0.0
 
 
-async def _measure_total_upstream_tco2e(period: str = "last_12_months") -> float:
-    inv = await _compute_inventory(period)
+async def _measure_total_upstream_tco2e(user_id: str, period: str = "last_12_months") -> float:
+    inv = await _compute_inventory(period, user_id=user_id)
     return float(inv.get("total_upstream_tco2e", 0.0) or 0.0)
 
 
