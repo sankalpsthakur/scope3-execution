@@ -1,4 +1,48 @@
 import { BarChart3 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
+
+const uncertaintyColor = {
+  low: "bg-[#22C55E]/20 text-[#22C55E]",
+  medium: "bg-[#F59E0B]/20 text-[#F59E0B]",
+  high: "bg-[#EF4444]/20 text-[#EF4444]",
+};
+
+const qualityColor = {
+  high: "bg-[#22C55E]/20 text-[#22C55E]",
+  medium: "bg-[#0EA5E9]/20 text-[#0EA5E9]",
+  low: "bg-[#EF4444]/20 text-[#EF4444]",
+};
+
+function IntensityBar({ value, max }) {
+  if (value == null) {
+    return <span className="text-xs text-gray-500">n/a</span>;
+  }
+  const pct = Math.min(100, (value / (max || value || 1)) * 100);
+  return (
+    <div className="w-full">
+      <div className="progress-track">
+        <div className="progress-fill" style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-xs text-gray-500 mt-1 font-mono">{value.toExponential(2)} tCO₂e/$</p>
+    </div>
+  );
+}
+
 
 export default function MeasurePage() {
   return (
