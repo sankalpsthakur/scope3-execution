@@ -304,26 +304,33 @@ export const DeepDivePanel = ({ supplier, isOpen, onClose, onEngagementUpdate, o
                   <h4 className="font-display font-bold text-white mb-3 uppercase tracking-tight text-sm">
                     Recommended Actions
                   </h4>
-                  <div className="space-y-3">
-                    {deepDive.content.action_plan?.map((action, index) => (
-                      <div key={index} className="action-step">
-                        <div className="flex items-start gap-3">
-                          <span className="w-6 h-6 rounded-full bg-[#22C55E]/20 flex items-center justify-center flex-shrink-0 text-[#22C55E] text-xs font-bold">
-                            {action.step}
-                          </span>
-                          <div>
-                            <p className="font-semibold text-white text-sm mb-1">{action.title}</p>
-                            <p className="text-gray-400 text-sm">{action.detail}</p>
-                            {action.citation && (
-                              <p className="text-xs text-gray-500 mt-1 italic">
-                                Source: {action.citation}
-                              </p>
-                            )}
+                  {Array.isArray(deepDive.content.action_plan) && deepDive.content.action_plan.length > 0 ? (
+                    <div className="space-y-3">
+                      {deepDive.content.action_plan.map((action, index) => (
+                        <div key={index} className="action-step">
+                          <div className="flex items-start gap-3">
+                            <span className="w-6 h-6 rounded-full bg-[#22C55E]/20 flex items-center justify-center flex-shrink-0 text-[#22C55E] text-xs font-bold">
+                              {action.step}
+                            </span>
+                            <div>
+                              <p className="font-semibold text-white text-sm mb-1">{action.title}</p>
+                              <p className="text-gray-400 text-sm">{action.detail}</p>
+                              {action.citation && (
+                                <p className="text-xs text-gray-500 mt-1 italic">Source: {action.citation}</p>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                      <p className="text-sm text-gray-300">
+                        No peer-validated technical actions were found in the retrieved evidence. Use the contract clause
+                        below to request a category-specific roadmap and supporting documentation.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="metric-card p-4">
