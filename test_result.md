@@ -145,9 +145,9 @@
 ## frontend:
 ##   - task: "Reduce dashboard server-side filtering + evidence excerpts UI"
 ##     implemented: true
-##     working: true
+##     working: false
 ##     file: "/app/frontend/src/pages/ReduceDashboard.jsx"
-##     stuck_count: 1
+##     stuck_count: 2
 ##     priority: "high"
 ##     needs_retesting: false
 ##     status_history:
@@ -166,6 +166,9 @@
 ##       - working: true
 ##         agent: "testing"
 ##         comment: "REGRESSION RESOLVED: ✅ Backend fix applied - seed_mock_data() now uses current user's measure_user_id instead of hardcoded '_global_demo'. ✅ Suppliers table now populates correctly with 10 suppliers after clearing default filters. ✅ Deep dive panel opens and displays complete content including narrative, recommendations, and sources. ✅ All core Reduce functionality restored and working. ⚠️ Minor: Default filters are restrictive - users need to clear filters to see all suppliers initially."
+##       - working: false
+##         agent: "testing"
+##         comment: "HEATMAP DETERMINISM TESTING COMPLETED: ✅ Heatmap functionality working correctly - 10 cells render with proper color coding, hover tooltips show 'Action Available' text, cell clicks open deep dive panels. ✅ Authentication and navigation successful. ❌ CRITICAL: Table view shows 0 suppliers after switching from heatmap view - state management issue between view modes causes data loss. This breaks the requirement that 'table view still works'. ⚠️ Minor: /api/suppliers/heatmap endpoint not called, using fallback table data (design feature). Root cause: View switching doesn't properly maintain supplier data state."
 ##   - task: "Module navigation (Measure/Reduce/Engage/Report)"
 ##     implemented: true
 ##     working: true
