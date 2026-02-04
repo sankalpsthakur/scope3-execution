@@ -219,7 +219,7 @@ export const DeepDivePanel = ({ supplier, isOpen, onClose }) => {
                 )}
               </div>
             ) : null}
-          </ScrollArea>
+          </div>
         </div>
       </SheetContent>
     </Sheet>
