@@ -1385,8 +1385,9 @@ async def seed_mock_data():
         if supplier_int > 0 and supplier_int > peer_int:
             potential_reduction_pct = round(((supplier_int - peer_int) / supplier_int) * 100.0, 1)
 
-        spend_share = (s["spend_m"] / total_spend) if total_spend else 0
-        upstream_impact_pct = round(spend_share * (potential_reduction_pct / 100.0) * 100.0, 2)
+        supplier_identifier = f"{supplier_company_id}_001"
+        supplier_emissions_share = _safe_div(supplier_tco2e_map.get(supplier_identifier, 0.0), total_upstream_tco2e)
+        upstream_impact_pct = round(supplier_emissions_share * (potential_reduction_pct / 100.0) * 100.0, 2)
 
         supplier_company = company_map[supplier_company_id]
         peer_company = company_map[peer_company_id]
