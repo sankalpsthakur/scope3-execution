@@ -1608,33 +1608,6 @@ async def startup_scheduler():
     scheduler.add_job(_nightly_pipeline_job, CronTrigger(hour=2, minute=15))
     scheduler.start()
 
-    suppliers = await db.supplier_benchmarks.count_documents({"tenant_id": tenant_id})
-    recs = await db.recommendation_content.count_documents({"tenant_id": tenant_id})
-    docs = await db.disclosure_docs.count_documents({"tenant_id": tenant_id})
-    sources = await db.disclosure_sources.count_documents({"tenant_id": tenant_id})
-    chunks = await db.disclosure_chunks.count_documents({"tenant_id": tenant_id})
-
-    last_run = await db.pipeline_runs.find_one({"tenant_id": tenant_id}, {"_id": 0}, sort=[("started_at", -1)])
-
-    return {
-        "tenant_id": tenant_id,
-        "counts": {
-            "benchmarks": suppliers,
-            "recommendations": recs,
-            "sources": sources,
-            "docs": docs,
-            "chunks": chunks,
-        },
-        "last_pipeline_run": last_run,
-    }
-
-    # Minimal: if missing factor match, quality low.
-    if record.get("factor_match") is False:
-        return "low"
-    if record.get("method") == "activity":
-        return "medium"
-    return "medium"
-
 
 @api_router.post("/measure/seed")
 async def seed_measure_data(request: Request):
