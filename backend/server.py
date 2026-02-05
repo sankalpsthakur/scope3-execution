@@ -11,6 +11,7 @@ import math
 import re
 import hashlib
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from cryptography.fernet import Fernet
 from apscheduler.triggers.cron import CronTrigger
 from pypdf import PdfReader
 from typing import List, Optional, Dict, Any, Tuple
