@@ -555,6 +555,26 @@ async def seed_disclosure_sources(request: Request):
 
 
 async def _seed_doc_text(url: str) -> str:
+    # Seeded corpus (realistic excerpts; in production this would be parsed from PDFs)
+    if url.startswith("seed://sika"):
+        return """
+        [Page 45] In 2022/2023, Sika reduced product carbon intensity by expanding bio-based polymer inputs and increasing post-consumer recycled (PCR) content in packaging to 80%.
+        [Page 46] Sika implemented supplier specifications requiring minimum recycled content thresholds and audited tier-2 chemical inputs for lifecycle emissions hotspots.
+        [Page 47] Procurement introduced contractual recycled-content requirements and supplier scorecards, improving traceability for key raw materials.
+        """
+    if url.startswith("seed://dhl"):
+        return """
+        [Page 12] DHL deployed electric delivery vehicles in dense urban routes and used route-optimization software to reduce empty miles and fuel burn.
+        [Page 13] For long-haul air freight, DHL increased Sustainable Aviation Fuel (SAF) procurement and shifted eligible lanes to intermodal rail alternatives.
+        [Page 14] DHL required carriers to provide fuel and distance activity data, enabling shipment-level carbon accounting.
+        """
+    if url.startswith("seed://basf"):
+        return """
+        [Page 88] BASF expanded renewable electricity procurement via Power Purchase Agreements (PPAs) and electrified steam generation to reduce upstream energy intensity.
+        [Page 89] BASF implemented heat integration and process optimization in energy-intensive units, prioritizing sites with highest marginal abatement potential.
+        [Page 90] BASF updated supplier engagement programs to request energy procurement disclosure and site-level electricity mix.
+        """
+    return ""
 
 
 async def _download_pdf(url: str) -> bytes:
