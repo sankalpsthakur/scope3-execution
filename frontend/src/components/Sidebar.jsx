@@ -76,6 +76,14 @@ export const Sidebar = ({ user, onLogout, activeItem, onNavigate }) => {
               <FileText className="w-4 h-4" />
               <span>Report</span>
             </button>
+            <button
+              onClick={() => navTo("evidence")}
+              className={`sidebar-item w-full text-left ${active === "evidence" ? "active" : ""}`}
+              data-testid="nav-evidence"
+            >
+              <Files className="w-4 h-4" />
+              <span>Evidence</span>
+            </button>
           </div>
         </div>
       </nav>
