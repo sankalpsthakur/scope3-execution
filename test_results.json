@@ -1,76 +1,154 @@
 {
   "summary": {
-    "tests_run": 11,
-    "tests_passed": 11,
+    "tests_run": 24,
+    "tests_passed": 24,
     "success_rate": 100.0,
-    "timestamp": "2026-02-04T22:56:55.571038"
+    "timestamp": "2026-02-05T02:37:18.330444"
   },
   "results": [
+    {
+      "test": "Deterministic Auth Login",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-05T02:36:48.686652"
+    },
+    {
+      "test": "Auth Me (With Token)",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-05T02:36:48.728677"
+    },
     {
       "test": "POST Pipeline Run",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T22:56:49.623679"
+      "timestamp": "2026-02-05T02:37:08.840961"
     },
     {
-      "test": "GET Suppliers",
+      "test": "GET Pipeline Docs",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T22:56:49.658891"
+      "timestamp": "2026-02-05T02:37:08.915704"
     },
     {
-      "test": "Suppliers Non-Empty Validation",
+      "test": "Disclosure Docs Count Validation",
       "success": true,
-      "details": "Found 5 suppliers",
-      "timestamp": "2026-02-04T22:56:49.659438"
+      "details": "Found 3 docs (expected >=3)",
+      "timestamp": "2026-02-05T02:37:08.916306"
     },
     {
-      "test": "Upstream Impact Validation",
-      "success": true,
-      "details": "All 5 suppliers have upstream_impact_pct > 0",
-      "timestamp": "2026-02-04T22:56:49.659449"
-    },
-    {
-      "test": "GET Suppliers Filter",
+      "test": "Render PDF Page - Sika",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T22:56:49.694216"
+      "timestamp": "2026-02-05T02:37:09.046839"
     },
     {
-      "test": "GET Measure Overview",
+      "test": "PDF Render - Sika",
+      "success": true,
+      "details": "PNG generated: 1400x1800, 41864 chars",
+      "timestamp": "2026-02-05T02:37:09.047527"
+    },
+    {
+      "test": "Render PDF Page - DHL",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T22:56:49.732825"
+      "timestamp": "2026-02-05T02:37:09.167514"
     },
     {
-      "test": "Measure Total Upstream Validation",
+      "test": "PDF Render - DHL",
       "success": true,
-      "details": "total_upstream_tco2e = 1035000.0",
-      "timestamp": "2026-02-04T22:56:49.733275"
+      "details": "PNG generated: 1400x1800, 32804 chars",
+      "timestamp": "2026-02-05T02:37:09.170243"
     },
     {
-      "test": "Measure Coverage Validation",
-      "success": true,
-      "details": "coverage_pct = 100.0%",
-      "timestamp": "2026-02-04T22:56:49.733284"
-    },
-    {
-      "test": "GET Deep Dive",
+      "test": "Render PDF Page - BASF",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T22:56:55.508692"
+      "timestamp": "2026-02-05T02:37:09.268679"
     },
     {
-      "test": "Deep Dive Structure Validation",
+      "test": "PDF Render - BASF",
       "success": true,
-      "details": "All required sections present",
-      "timestamp": "2026-02-04T22:56:55.509371"
+      "details": "PNG generated: 1400x1800, 38476 chars",
+      "timestamp": "2026-02-05T02:37:09.269519"
     },
     {
-      "test": "PDF Export Validation",
+      "test": "OCR - Sika",
       "success": true,
-      "details": "PDF generated successfully (4617 bytes)",
-      "timestamp": "2026-02-04T22:56:55.570308"
+      "details": "",
+      "timestamp": "2026-02-05T02:37:11.723632"
+    },
+    {
+      "test": "OCR Blocks - Sika",
+      "success": true,
+      "details": "Found 2 blocks",
+      "timestamp": "2026-02-05T02:37:11.724414"
+    },
+    {
+      "test": "OCR Raw Text - Sika",
+      "success": true,
+      "details": "Raw text: 162 chars",
+      "timestamp": "2026-02-05T02:37:11.724422"
+    },
+    {
+      "test": "OCR - DHL",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-05T02:37:14.142704"
+    },
+    {
+      "test": "OCR Blocks - DHL",
+      "success": true,
+      "details": "Found 2 blocks",
+      "timestamp": "2026-02-05T02:37:14.143391"
+    },
+    {
+      "test": "OCR Raw Text - DHL",
+      "success": true,
+      "details": "Raw text: 135 chars",
+      "timestamp": "2026-02-05T02:37:14.143398"
+    },
+    {
+      "test": "OCR - BASF",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-05T02:37:16.376846"
+    },
+    {
+      "test": "OCR Blocks - BASF",
+      "success": true,
+      "details": "Found 2 blocks",
+      "timestamp": "2026-02-05T02:37:16.377583"
+    },
+    {
+      "test": "OCR Raw Text - BASF",
+      "success": true,
+      "details": "Raw text: 154 chars",
+      "timestamp": "2026-02-05T02:37:16.377596"
+    },
+    {
+      "test": "OCR Error Handling",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-05T02:37:16.422128"
+    },
+    {
+      "test": "OCR Persistence Test",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-05T02:37:18.329427"
+    },
+    {
+      "test": "OCR Persistence Validation",
+      "success": true,
+      "details": "Second OCR call succeeded, indicating proper persistence",
+      "timestamp": "2026-02-05T02:37:18.330206"
+    },
+    {
+      "test": "OCR Pipeline Overall",
+      "success": true,
+      "details": "Successfully processed 3 pages",
+      "timestamp": "2026-02-05T02:37:18.330232"
     }
   ]
 }
