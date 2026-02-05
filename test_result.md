@@ -144,6 +144,9 @@
 ##       - working: true
 ##         agent: "testing"
 ##         comment: "ITERATION 3 DEEP DIVE TESTING COMPLETED: ✅ Legacy /api/suppliers/{id}/deep-dive endpoint returns complete structure with meta, metrics, content including evidence_status, source_docs (with page numbers), and source_citations with quotes. ✅ /api/v1/recommendations/supplier/{id}/deep-dive fully complies with tech spec JSON contract - all required meta, metrics, and content fields present. ✅ AI content generation working correctly with 100% success rate across multiple suppliers. ✅ Evidence handling works for both cases: when evidence chunks exist (returns detailed action plans) and when missing (returns generic template with action_plan=null). All deep dive functionality working as specified."
+##       - working: true
+##         agent: "testing"
+##         comment: "ITERATION 6 DEEP DIVE VERIFICATION: ✅ PPG Industries deep dive API working with evidence_status='ok'. ✅ Evidence excerpts contain proper page number citations ['46', '45'] from seeded Sika disclosure content. ✅ Source documents include page references matching evidence excerpts. ✅ Citations and source docs properly structured with title, URL, and page fields. ✅ Deep dive contract fully compliant with Epic D MVP requirements for evidence-based recommendations."
 ##
 ## frontend:
 ##   - task: "Reduce dashboard server-side filtering + evidence excerpts UI"
