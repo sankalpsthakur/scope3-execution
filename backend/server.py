@@ -467,9 +467,11 @@ Rules:
 - Do not include any extra keys or markdown.
 """
 
+    # NOTE: Using gemini-3-flash-preview because it is already proven working in this repo
+    # with the Emergent Universal Key, and supports image attachments via base64.
     chat = (
         LlmChat(api_key=api_key, session_id=session_id, system_message=system_message)
-        .with_model("gemini", "gemini-2.5-flash-image")
+        .with_model("gemini", "gemini-3-flash-preview")
     )
 
     msg = UserMessage(
