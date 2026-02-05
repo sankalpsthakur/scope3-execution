@@ -1536,6 +1536,12 @@ def _uncertainty_for_method(method: str) -> str:
 
 
 def _quality_for_record(record: dict) -> str:
+    # Minimal: if missing factor match, quality low.
+    if record.get("factor_match") is False:
+        return "low"
+    if record.get("method") == "activity":
+        return "medium"
+    return "medium"
 
 
 # ==================== EPIC I: ADMIN ENDPOINTS (MVP) ====================
