@@ -66,6 +66,7 @@ export default function Dashboard() {
           if (key === "measure") navigate("/dashboard/measure");
           else if (key === "engage") navigate("/dashboard/engage");
           else if (key === "report") navigate("/dashboard/report");
+          else if (key === "evidence") navigate("/dashboard/evidence");
           else navigate("/dashboard");
         }}
       />
