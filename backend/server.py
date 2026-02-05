@@ -658,7 +658,12 @@ async def download_disclosures(request: Request):
 
 @api_router.post("/pipeline/ingest")
 async def ingest_disclosures(request: Request):
-    """MVP ingestion: reads disclosure_sources and produces chunk + embedding records."""
+    """Ingestion: reads disclosure_sources and produces chunk + embedding records.
+
+    Supports:
+    - seeded sources (seed://...) via _seed_doc_text
+    - registered https PDF sources (downloaded into disclosure_docs)
+    """
     user = await get_user_from_request(request)
     tenant_id = user["user_id"]
 
@@ -666,7 +671,7 @@ async def ingest_disclosures(request: Request):
 
     sources = await db.disclosure_sources.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(200)
     if not sources:
-        return {"message": "No sources found. Seed sources first.", "chunks_created": 0}
+        return {"message": "No sources found. Seed or register sources first.", "chunks_created": 0}
 
     # Clear previous tenant chunks
     await db.disclosure_chunks.delete_many({"tenant_id": tenant_id})
@@ -675,38 +680,57 @@ async def ingest_disclosures(request: Request):
     await db.disclosure_chunks.create_index([("tenant_id", 1), ("company_id", 1), ("category", 1)])
 
     created = 0
+
     for s in sources:
-        raw = await _seed_doc_text(s["url"])
-        # Split by the embedded [Page XX] tags to create page-level chunks
-        parts = re.split(r"\[Page\s+(\d+)\]", raw)
-        # parts: [prefix, page, text, page, text...]
-        page_pairs = []
-        if len(parts) >= 3:
-            i = 1
-            while i < len(parts) - 1:
-                page = parts[i]
-                text = parts[i + 1]
-                page_pairs.append((int(page), _clean_text(text)))
-                i += 2
+        url = s["url"]
+        page_pairs: List[Tuple[int, str]] = []
+
+        if url.startswith("seed://"):
+            raw = await _seed_doc_text(url)
+            parts = re.split(r"\[Page\s+(\d+)\]", raw)
+            if len(parts) >= 3:
+                i = 1
+                while i < len(parts) - 1:
+                    page = parts[i]
+                    text = parts[i + 1]
+                    page_pairs.append((int(page), _clean_text(text)))
+                    i += 2
+            else:
+                page_pairs = [(1, _clean_text(raw))]
         else:
-            # fallback single chunk
-            page_pairs = [(1, _clean_text(raw))]
+            # PDF path: find the downloaded doc for this source
+            doc = await db.disclosure_docs.find_one(
+                {"tenant_id": tenant_id, "url": url},
+                {"_id": 0}
+            )
+            if not doc:
+                # not downloaded yet
+                continue
+
+            try:
+                pdf_enc = Path(doc["local_path"]).read_bytes()
+                pdf_bytes = _decrypt_bytes(pdf_enc)
+                page_pairs = _pdf_pages_to_text(pdf_bytes)
+            except Exception:
+                page_pairs = []
 
         for page, page_text in page_pairs:
+            if not page_text:
+                continue
             for chunk in _chunk_text(page_text, chunk_size=900, overlap=80):
-                doc = {
-                    "id": _hash_id(tenant_id, s["company_id"], s["category"], s["url"], str(page), chunk[:64]),
+                doc_chunk = {
+                    "id": _hash_id(tenant_id, s["company_id"], s["category"], url, str(page), chunk[:64]),
                     "tenant_id": tenant_id,
                     "company_id": s["company_id"],
                     "category": s["category"],
                     "title": s["title"],
-                    "url": s["url"],
+                    "url": url,
                     "page": page,
                     "excerpt": chunk,
                     "embedding": _embed_mock(chunk),
                     "created_at": datetime.now(timezone.utc).isoformat(),
                 }
-                await db.disclosure_chunks.insert_one(doc)
+                await db.disclosure_chunks.insert_one(doc_chunk)
                 created += 1
 
     await _log_audit(tenant_id, "pipeline.ingest", {"chunks_created": created})
