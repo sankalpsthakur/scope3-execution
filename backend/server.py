@@ -401,7 +401,15 @@ def _chunk_text(text: str, chunk_size: int = 1200, overlap: int = 120) -> List[s
     text = _clean_text(text)
     if not text:
         return []
-    chunks = []
+    chunks: List[str] = []
+    i = 0
+    while i < len(text):
+        end = min(len(text), i + chunk_size)
+        chunks.append(text[i:end])
+        if end == len(text):
+            break
+        i = max(0, end - overlap)
+    return chunks
 
 
 class DisclosureSourceRegister(BaseModel):
