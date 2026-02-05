@@ -25,6 +25,7 @@ export default function Dashboard() {
     if (path.startsWith("/dashboard/engage")) return "engage";
     if (path.startsWith("/dashboard/measure")) return "measure";
     if (path.startsWith("/dashboard/report")) return "report";
+    if (path.startsWith("/dashboard/evidence")) return "evidence";
     return "reduce";
   }, [location.pathname]);
 
