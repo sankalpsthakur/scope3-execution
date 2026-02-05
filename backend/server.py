@@ -378,6 +378,209 @@ def _hash_id(*parts: str) -> str:
     h = hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
     return h[:24]
 
+# ==================== EPIC H (LAYER 3 MVP): OCR / BLOCK EXTRACTION + PROVENANCE ====================
+
+class OcrRequest(BaseModel):
+    """OCR request using Gemini Flash Vision.
+
+    Provide a single page image as base64 (PNG/JPEG/WEBP).
+    Optionally provide metadata for storage/provenance.
+    """
+
+    # The base64 data *only* (no data:... prefix)
+    image_base64: str
+    mime_type: str = "image/png"
+
+    # Optional provenance hooks
+    doc_id: Optional[str] = None
+    page_number: Optional[int] = None
+    supplier_id: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class OcrBlock(BaseModel):
+    text: str
+    bbox: List[float]  # [x0, y0, x1, y1] in pixel coords
+    confidence: Optional[float] = None
+
+
+class OcrResponse(BaseModel):
+    request_id: str
+    blocks: List[OcrBlock]
+    raw_text: str
+    created_at: str
+
+
+def _b64_to_bytes(b64: str) -> bytes:
+    try:
+        return base64.b64decode(b64)
+    except Exception:
+        return b""
+
+
+def _pdf_page_to_png_base64(pdf_bytes: bytes, page_number: int, zoom: float = 2.0) -> Tuple[str, int, int]:
+    """Render a PDF page to PNG base64 using PyMuPDF.
+
+    Returns: (png_base64, width_px, height_px)
+    """
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    if page_number < 1 or page_number > doc.page_count:
+        raise HTTPException(status_code=400, detail=f"Invalid page_number {page_number}")
+
+    page = doc.load_page(page_number - 1)
+    mat = fitz.Matrix(zoom, zoom)
+    pix = page.get_pixmap(matrix=mat, alpha=False)
+    png_bytes = pix.tobytes("png")
+    return base64.b64encode(png_bytes).decode("utf-8"), pix.width, pix.height
+
+
+async def _gemini_flash_ocr_blocks(image_base64: str, mime_type: str, session_id: str) -> Dict[str, Any]:
+    """Call Gemini Flash Vision to extract text blocks + bounding boxes.
+
+    Returns a dict with keys: raw_text, blocks[]
+    """
+    from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+    import json
+
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="EMERGENT_LLM_KEY not configured")
+
+    system_message = """You are an OCR extraction system.
+
+Return ONLY valid JSON with this schema:
+{
+  "raw_text": "string",
+  "blocks": [
+    {
+      "text": "string",
+      "bbox": [x0, y0, x1, y1],
+      "confidence": 0.0
+    }
+  ]
+}
+
+Rules:
+- bbox MUST be pixel coordinates relative to the provided image.
+- Use as many blocks as needed (paragraphs/lines/table cells).
+- If you cannot infer bbox confidently, still return blocks with best-effort bbox.
+- Do not include any extra keys or markdown.
+"""
+
+    chat = (
+        LlmChat(api_key=api_key, session_id=session_id, system_message=system_message)
+        .with_model("gemini", "gemini-2.5-flash-image")
+    )
+
+    msg = UserMessage(
+        text="Extract OCR blocks with bounding boxes.",
+        file_contents=[ImageContent(image_base64=image_base64)],
+    )
+
+    resp = await chat.send_message(msg)
+    txt = (resp or "").strip()
+    if txt.startswith("```json"):
+        txt = txt[7:]
+    if txt.startswith("```"):
+        txt = txt[3:]
+    if txt.endswith("```"):
+        txt = txt[:-3]
+
+    return json.loads(txt.strip())
+
+
+@api_router.post("/execution/ocr", response_model=OcrResponse)
+async def execution_ocr(payload: OcrRequest, request: Request):
+    """Execution Swarm OCR endpoint (Gemini Flash Vision).
+
+    - Accepts base64 page image
+    - Returns blocks + raw_text
+    - Stores an audit event
+
+    NOTE: This is the first thin slice of Agent H (Auditor OCR).
+    """
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    await _rate_limit_persistent(tenant_id, action="execution_ocr", limit=12, window_seconds=60)
+
+    request_id = str(uuid.uuid4())
+    created_at = datetime.now(timezone.utc).isoformat()
+
+    data = await _gemini_flash_ocr_blocks(
+        image_base64=payload.image_base64,
+        mime_type=payload.mime_type,
+        session_id=f"ocr_{tenant_id}_{request_id}",
+    )
+
+    blocks = data.get("blocks") or []
+    raw_text = data.get("raw_text") or ""
+
+    # Persist OCR event + blocks (MVP)
+    await db.ocr_blocks.insert_many(
+        [
+            {
+                "id": str(uuid.uuid4()),
+                "tenant_id": tenant_id,
+                "doc_id": payload.doc_id,
+                "page_number": payload.page_number,
+                "supplier_id": payload.supplier_id,
+                "text": b.get("text", ""),
+                "bbox": b.get("bbox", []),
+                "confidence": b.get("confidence"),
+                "created_at": created_at,
+            }
+            for b in blocks
+            if (b.get("text") or "").strip()
+        ]
+    )
+
+    await _log_audit(tenant_id, "execution.ocr", {"doc_id": payload.doc_id, "page": payload.page_number, "blocks": len(blocks)})
+
+    return {
+        "request_id": request_id,
+        "blocks": blocks,
+        "raw_text": raw_text,
+        "created_at": created_at,
+    }
+
+
+@api_router.post("/execution/render-pdf-page")
+async def render_pdf_page(payload: Dict[str, Any], request: Request):
+    """Render a PDF (already stored in disclosure_docs local_path) to a PNG base64.
+
+    Body:
+    {
+      "doc_id": "...",
+      "page_number": 1,
+      "zoom": 2.0
+    }
+
+    Returns:
+    { "png_base64": "...", "width": 123, "height": 456 }
+    """
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    doc_id = (payload or {}).get("doc_id")
+    page_number = int((payload or {}).get("page_number") or 1)
+    zoom = float((payload or {}).get("zoom") or 2.0)
+
+    if not doc_id:
+        raise HTTPException(status_code=400, detail="doc_id required")
+
+    doc = await db.disclosure_docs.find_one({"tenant_id": tenant_id, "doc_id": doc_id}, {"_id": 0})
+    if not doc or not doc.get("local_path"):
+        raise HTTPException(status_code=404, detail="PDF not found for this tenant/doc_id")
+
+    pdf_enc = Path(doc["local_path"]).read_bytes()
+    pdf_bytes = _decrypt_bytes(pdf_enc)
+
+    png_b64, w, h = _pdf_page_to_png_base64(pdf_bytes, page_number=page_number, zoom=zoom)
+
+    return {"png_base64": png_b64, "width": w, "height": h, "mime_type": "image/png"}
+
+
 
 def _embed_mock(text: str, dim: int = 128) -> List[float]:
     """Deterministic lightweight embedding-like vector.
