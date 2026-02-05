@@ -265,6 +265,9 @@
 ##       - working: true
 ##         agent: "testing"
 ##         comment: "DETERMINISTIC AUTH COOKIE PERSISTENCE FIXED: ✅ Identified and resolved critical bug - SameSite=none without Secure=true prevented cookie persistence on localhost. ✅ Changed SameSite to 'lax' in /api/auth/test-login endpoint (server.py line 228). ✅ Authentication flow now working: POST /api/auth/test-login sets persistent cookie, GET /api/auth/me succeeds with cookie auth, /dashboard loads and Reduce table populates with 5 suppliers. ✅ Cookie attributes verified: SameSite=Lax, Secure=False, HttpOnly=True, Domain=localhost. ✅ Deterministic auth working without OAuth dependency for automated testing."
+       - working: true
+         agent: "testing"
+         comment: "COOKIE FLAGS REVERTED TO SAMESITE=NONE; SECURE=TRUE VERIFICATION COMPLETED: ✅ Successfully tested deterministic auth after cookie flags were reverted back to SameSite=None; Secure=true as requested in review. ✅ POST /api/auth/test-login with X-Test-Auth header (TEST_AUTH_TOKEN) working correctly and sets session cookie with proper cross-site attributes. ✅ GET /api/auth/me works in browser context with cookie included on cross-site requests from frontend domain to backend domain. ✅ Cookie attributes verified: SameSite=None, Secure=True, HttpOnly=True, Domain=scope3-tracker.preview.emergentagent.com. ✅ Cross-site cookie authentication fully functional for production environment. Deterministic auth system working correctly with reverted cookie flags."
 ##   stuck_tasks:
 ##     - "Reduce dashboard server-side filtering + evidence excerpts UI"
 ##   test_all: true
