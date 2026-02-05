@@ -29,9 +29,16 @@ from starlette.staticfiles import StaticFiles
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
-mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ["DB_NAME"]]
+try:
+    mongo_url = os.environ.get("MONGO_URL", "")
+    if not mongo_url:
+        raise ValueError("MONGO_URL not set")
+    client = AsyncIOMotorClient(mongo_url)
+    db = client[os.environ.get("DB_NAME", "scope3_execution")]
+except Exception as _mongo_err:
+    logging.warning("MongoDB unavailable (%s) — running in static-only mode", _mongo_err)
+    client = None  # type: ignore[assignment]
+    db = None  # type: ignore[assignment]
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -3967,4 +3974,5 @@ _maybe_mount_frontend()
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    client.close()
+    if client is not None:
+        client.close()

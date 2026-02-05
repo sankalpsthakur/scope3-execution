@@ -4,6 +4,10 @@ import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-ro
 import axios from "axios";
 import { Toaster } from "@/components/ui/sonner";
 import { API_BASE } from "@/lib/api";
+import { installDemoMode } from "@/lib/demoMode";
+
+// Install demo mode adapter before any API calls fire.
+installDemoMode();
 
 // Pages
 import LandingPage from "@/pages/LandingPage";
