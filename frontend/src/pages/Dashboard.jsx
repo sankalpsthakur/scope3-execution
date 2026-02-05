@@ -43,6 +43,7 @@ export default function Dashboard() {
     if (activeModule === "measure") return <MeasurePage />;
     if (activeModule === "engage") return <EngagePage focusSupplierId={engageFocusSupplierId} />;
     if (activeModule === "report") return <ReportPage />;
+    if (activeModule === "evidence") return <EvidencePage />;
 
     return (
       <ReduceDashboard
