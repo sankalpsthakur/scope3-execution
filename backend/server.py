@@ -2208,17 +2208,49 @@ async def seed_mock_data(request: Request):
 
 @api_router.post("/pipeline/run")
 async def run_mock_pipeline(request: Request):
-    """Mock pipeline trigger (re-seeds Measure + Reduce precomputed tables).
+    """Pipeline trigger (demo): seeds baseline + benchmarks and generates cached recommendations.
 
-    This simulates the nightly batch pipeline described in the tech spec.
+    Simulates the nightly batch pipeline described in the tech spec.
     """
-    await get_user_from_request(request)
-    await seed_measure_data(request)
-    await seed_disclosure_sources(request)
-    await ingest_disclosures(request)
-    await seed_mock_data(request)
-    await generate_recommendations_batch(request)
-    return {"message": "Pipeline run complete", "note": "Seeded Measure + Reduce benchmarks + evidence chunks + cached recommendations."}
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    await db.pipeline_runs.create_index([("tenant_id", 1), ("started_at", -1)])
+
+    run_id = str(uuid.uuid4())
+    started_at = datetime.now(timezone.utc).isoformat()
+    await db.pipeline_runs.insert_one({
+        "id": run_id,
+        "tenant_id": tenant_id,
+        "status": "running",
+        "started_at": started_at,
+    })
+
+    try:
+        await seed_measure_data(request)
+        await seed_disclosure_sources(request)
+        await ingest_disclosures(request)
+        await seed_mock_data(request)
+        await generate_recommendations_batch(request)
+
+        finished_at = datetime.now(timezone.utc).isoformat()
+        await db.pipeline_runs.update_one(
+            {"id": run_id},
+            {"$set": {"status": "success", "finished_at": finished_at}},
+        )
+
+        return {
+            "message": "Pipeline run complete",
+            "run_id": run_id,
+            "note": "Seeded Measure + Reduce benchmarks + evidence chunks + cached recommendations.",
+        }
+    except Exception as e:
+        finished_at = datetime.now(timezone.utc).isoformat()
+        await db.pipeline_runs.update_one(
+            {"id": run_id},
+            {"$set": {"status": "failed", "finished_at": finished_at, "error": str(e)}},
+        )
+        raise
 
 
 # ==================== BASIC ENDPOINTS ====================
