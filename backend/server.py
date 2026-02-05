@@ -552,20 +552,6 @@ async def render_pdf_page(payload: Dict[str, Any], request: Request):
 
     Supported sources:
     - disclosure_docs.local_path (downloaded https PDFs)
-
-
-@api_router.get("/pipeline/docs")
-async def list_disclosure_docs(request: Request):
-    """List disclosure_docs for the current tenant (for Evidence/OCR workflows)."""
-    user = await get_user_from_request(request)
-    tenant_id = user["user_id"]
-
-    docs = await db.disclosure_docs.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(200)
-    # Keep payload small
-    for d in docs:
-        d.pop("content", None)
-    return {"docs": docs}
-
     - disclosure_docs.url starting with seed:// (renders a simple text page image)
 
     Body:
