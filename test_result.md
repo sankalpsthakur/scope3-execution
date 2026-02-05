@@ -363,15 +363,18 @@
 ## frontend:
 ##   - task: "Evidence page UI to run OCR and view output"
 ##     implemented: true
-##     working: "NA"
+##     working: true
 ##     file: "/app/frontend/src/pages/EvidencePage.jsx"
 ##     stuck_count: 0
 ##     priority: "medium"
-##     needs_retesting: true
+##     needs_retesting: false
 ##     status_history:
 ##       - working: "NA"
 ##         agent: "main"
 ##         comment: "Added /dashboard/evidence page: pick doc, enter page number, render PNG, run OCR, show JSON output and rendered image. Added sidebar nav entry."
+##       - working: true
+##         agent: "testing"
+##         comment: "EVIDENCE PAGE E2E TESTING COMPLETED SUCCESSFULLY: ✅ A) Sidebar shows Evidence nav item and successfully navigates to /dashboard/evidence. ✅ B) Evidence page loads correctly and fetches 3 documents from GET /api/pipeline/docs (Sika Sustainability Report 2023, DHL ESG Report 2023, BASF Annual Report 2023). ✅ C) Selected first document (Sika), set page number to 45, clicked Render → PDF image appears successfully showing rendered page content. ✅ D) Clicked OCR → JSON output appears with all required fields: request_id (58b94ed0-2a40-4e00-9f7a-e922d2ef0d77), blocks array with 2 blocks (>=1 requirement met), and non-empty raw_text with 162 characters about Sika's bio-based polymer initiatives. ✅ E) Page remains fully usable after OCR - all controls (Render button, OCR button, document select) remain functional with no console errors detected. All test requirements from review request successfully verified and working correctly."
 ##
 ## test_plan:
 ##   current_focus:
