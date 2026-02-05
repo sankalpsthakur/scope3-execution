@@ -1994,7 +1994,11 @@ async def run_mock_pipeline(request: Request):
     """
     await get_user_from_request(request)
     await seed_measure_data(request)
-    return await seed_mock_data(request)
+    await seed_disclosure_sources(request)
+    await ingest_disclosures(request)
+    await seed_mock_data(request)
+    await generate_recommendations_batch(request)
+    return {"message": "Pipeline run complete", "note": "Seeded Measure + Reduce benchmarks + evidence chunks + cached recommendations."}
 
 
 # ==================== BASIC ENDPOINTS ====================
