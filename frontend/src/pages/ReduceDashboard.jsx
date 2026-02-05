@@ -143,20 +143,22 @@ export default function ReduceDashboard({ onGoToEngage }) {
     const runPipeline = async () => {
       try {
         await axios.post(`${API}/pipeline/run`, {}, { withCredentials: true });
-        // /pipeline/run now also seeds + ingests + generates evidence for the demo.
-
       } catch (e) {
         // If auth isn't ready yet, the caller will retry when the page is revisited.
-      } finally {
-        // Refresh UI data after pipeline work completes.
-        fetchHeatmap();
-        fetchFilteredSuppliers();
       }
     };
 
     runPipeline();
     fetchEngagements();
-  }, [fetchEngagements, fetchHeatmap, fetchFilteredSuppliers]);
+  }, [fetchEngagements]);
+
+  useEffect(() => {
+    fetchHeatmap();
+  }, [fetchHeatmap]);
+
+  useEffect(() => {
+    fetchFilteredSuppliers();
+  }, [fetchFilteredSuppliers]);
 
   useEffect(() => {
     fetchFilteredSuppliers();
