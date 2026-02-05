@@ -373,5 +373,4 @@
 ##
 ## test_plan:
 ##   current_focus:
-##     - "Layer 3 Execution Swarm OCR (Gemini Flash Vision)"
 ##     - "Evidence page UI to run OCR and view output"
