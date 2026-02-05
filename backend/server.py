@@ -1538,6 +1538,31 @@ async def admin_metrics(request: Request):
     user = await get_user_from_request(request)
     tenant_id = user["user_id"]
 
+
+
+# ==================== EPIC D/I: SCHEDULER (MVP) ====================
+
+async def _nightly_pipeline_job():
+    # Runs for demo tenant only if present.
+    # In production this would iterate orgs.
+    try:
+        # No user context; skip.
+        return
+    except Exception:
+        return
+
+
+@app.on_event("startup")
+async def startup_scheduler():
+    global scheduler
+    if scheduler:
+        return
+
+    scheduler = AsyncIOScheduler()
+    # Nightly at 02:15 UTC (MVP). Does nothing until we implement org iteration.
+    scheduler.add_job(_nightly_pipeline_job, CronTrigger(hour=2, minute=15))
+    scheduler.start()
+
     suppliers = await db.supplier_benchmarks.count_documents({"tenant_id": tenant_id})
     recs = await db.recommendation_content.count_documents({"tenant_id": tenant_id})
     docs = await db.disclosure_docs.count_documents({"tenant_id": tenant_id})
