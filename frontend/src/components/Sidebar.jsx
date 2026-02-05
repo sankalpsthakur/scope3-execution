@@ -4,6 +4,7 @@ import {
   TrendingDown,
   Users,
   FileText,
+  Files,
   Settings,
   LogOut,
   ChevronDown,
