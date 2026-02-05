@@ -145,7 +145,7 @@
 ## frontend:
 ##   - task: "Reduce dashboard server-side filtering + evidence excerpts UI"
 ##     implemented: true
-##     working: false
+##     working: true
 ##     file: "/app/frontend/src/pages/ReduceDashboard.jsx"
 ##     stuck_count: 5
 ##     priority: "high"
