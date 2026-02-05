@@ -506,6 +506,11 @@ async def execution_ocr(payload: OcrRequest, request: Request):
 
     await _rate_limit_persistent(tenant_id, action="execution_ocr", limit=12, window_seconds=60)
 
+
+    # Basic boundary validation (system boundary: user input)
+    if not payload.image_base64 or len(payload.image_base64) < 50:
+        raise HTTPException(status_code=400, detail="image_base64 must be a valid base64-encoded PNG/JPEG/WEBP")
+
     request_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
 
