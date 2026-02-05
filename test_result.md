@@ -124,6 +124,9 @@
 ##       - working: true
 ##         agent: "testing"
 ##         comment: "REGRESSION TEST AFTER MEASURE INTEGRATION COMPLETED SUCCESSFULLY: ✅ Authentication via test session token bypass working correctly (test_session_1770238549883). ✅ POST /api/pipeline/run executed successfully and seeded mock data. ✅ GET /api/suppliers returns 5 suppliers, all with upstream_impact_pct > 0 as required. ✅ GET /api/suppliers/filter (no params) returns 5 filtered suppliers correctly. ✅ GET /api/measure/overview returns total_upstream_tco2e = 1035000.0 (>0) and coverage_pct = 100.0% (>0) as required. ✅ GET /api/suppliers/{id}/deep-dive for first supplier (Dow Inc) returns complete structure with evidence_status = 'ok' and AI-generated content. ✅ GET /api/suppliers/{id}/export-pdf generates valid PDF (4463 bytes). All regression test requirements met with 100% success rate (11/11 tests passed). No issues detected after Measure integration and pipeline changes."
+##       - working: true
+##         agent: "testing"
+##         comment: "ITERATION 6 PIPELINE + ADMIN ENDPOINTS VERIFICATION: ✅ /api/pipeline/run working correctly and seeding data. ✅ /api/admin/metrics returning complete counts (14 benchmarks, 12 recommendations, 3 sources, 3 docs, 9 chunks) with last_pipeline_run timestamp. ✅ PDF ingestion endpoints /api/pipeline/sources/register and /api/pipeline/download behaving correctly with expected responses when no URLs provided. ✅ Pipeline run logging functional with proper timestamps. All Epic D MVP pipeline and admin requirements verified successfully."
 ##   - task: "Deep dive endpoint contract + citations + edge cases"
 ##     implemented: true
 ##     working: true
