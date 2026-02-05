@@ -143,10 +143,8 @@ export default function ReduceDashboard({ onGoToEngage }) {
     const runPipeline = async () => {
       try {
         await axios.post(`${API}/pipeline/run`, {}, { withCredentials: true });
-        // Seed + ingest + generate peer evidence so deep dive has citations.
-        await axios.post(`${API}/pipeline/sources/seed`, {}, { withCredentials: true });
-        await axios.post(`${API}/pipeline/ingest`, {}, { withCredentials: true });
-        await axios.post(`${API}/pipeline/generate`, {}, { withCredentials: true });
+        // /pipeline/run now also seeds + ingests + generates evidence for the demo.
+
       } catch (e) {
         // If auth isn't ready yet, the caller will retry when the page is revisited.
       } finally {
