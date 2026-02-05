@@ -2015,10 +2015,15 @@ async def health():
 
 app.include_router(api_router)
 
+cors_origins = os.environ.get("CORS_ORIGINS", "*").split(",")
+if os.environ.get("CORS_ORIGINS", "*") == "*":
+    # Credentials + wildcard origin is blocked by browsers. Default to localhost dev origin.
+    cors_origins = ["http://localhost:3000"]
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
