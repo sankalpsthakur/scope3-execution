@@ -145,7 +145,13 @@ export const DeepDivePanel = ({ supplier, isOpen, onClose, onEngagementUpdate, o
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        // Radix calls onOpenChange(true) when opening; we only close when open becomes false.
+        if (!open) onClose();
+      }}
+    >
       <SheetContent 
         side="right" 
         className="w-full sm:max-w-2xl bg-[#0A0A0A] border-l border-white/10 p-0 overflow-hidden"
