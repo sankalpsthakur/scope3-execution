@@ -663,6 +663,20 @@ def _embed_mock(text: str, dim: int = 128) -> List[float]:
     return [v / norm for v in vec]
 
 
+
+@api_router.get("/pipeline/docs")
+async def list_disclosure_docs(request: Request):
+    """List disclosure_docs for the current tenant (for Evidence/OCR workflows)."""
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    docs = await db.disclosure_docs.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(200)
+    # Keep payload small
+    for d in docs:
+        d.pop("content", None)
+    return {"docs": docs}
+
+
 def _cosine(a: List[float], b: List[float]) -> float:
     if not a or not b:
         return 0.0
