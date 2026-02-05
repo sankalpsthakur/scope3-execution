@@ -92,16 +92,16 @@ This document is a practical, “consultant-style” checklist for taking this r
 
 ## Known gaps (observed 2026-02-05)
 - No checked-in CI workflow configuration (e.g., `.github/workflows/*`) despite `scripts/ci.sh` and `make ci`.
-- No containerization / deployment artifacts found (no `Dockerfile`, no `docker-compose.*`).
 - Session storage has expiry checks in code, but there is no Mongo TTL index or cleanup routine for `user_sessions`, so expired sessions can accumulate.
 - Cookie auth is configured for cross-site (`SameSite=None`, `Secure`) and CORS allows credentials; there is no explicit CSRF protection noted for state-changing endpoints.
 - Rate limiting uses a Mongo TTL index on `rate_limit_hits`, but the index creation call happens in the request path (index creation should be startup-time).
 - The `auth/test-login` endpoint is documented as “deterministic auth”, but it returns a newly generated session token each call; this is deterministic for identity (`test_user`) but not for token value.
-- Root-level product/docs are minimal (`README.md` is a placeholder); operational runbooks are not present.
+- Render deployment is live (https://scope3-execution.onrender.com) with single-service architecture (`SERVE_FRONTEND_DIR`). `MONGO_URL` must be updated to a real MongoDB Atlas connection string.
+- Operational runbooks are not present.
 
 ## Suggested next steps (small → impactful)
 1) Add a real CI workflow that runs `make ci` on PRs.
 2) Add Mongo TTL index (or scheduled cleanup) for `user_sessions` + index review for hot collections.
 3) Decide on a production auth posture (cookie+CSRF or bearer-only) and document it.
 4) Move request-path initialization (e.g., index creation) to app startup.
-5) Add deployment artifacts (Dockerfile + minimal runtime config) and a staging environment smoke test.
+5) Update `MONGO_URL` on Render to a production MongoDB Atlas cluster and disable `TEST_MODE`.

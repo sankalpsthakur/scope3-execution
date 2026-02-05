@@ -6,6 +6,19 @@ Auth resolution order (server-side):
 1) Cookie `session_token`
 2) `Authorization: Bearer <session_token>`
 
+## Demo Mode (Frontend Auto-Auth)
+
+In demo mode (backend TEST_MODE=true), the frontend ProtectedRoute in App.js automatically authenticates by:
+1. Trying GET /api/auth/me (existing session)
+2. If no session, calling POST /api/auth/test-login with X-Test-Auth: local_dev_token
+3. Falling back to a static demo user if the backend is unreachable
+
+This means no manual auth is needed for local development - just start both servers and open http://localhost:3000/dashboard.
+
+### Emergent Script (index.html)
+
+The Emergent auth script in public/index.html has been commented out for demo mode. If re-enabled, it will redirect all navigation to /en/login. For local demo, ensure the script tag remains commented out.
+
 ## Step 1: Deterministic auth (recommended for automated testing)
 
 ### Option A (preferred): Use the test-login endpoint (deterministic *user*, freshly minted token)
@@ -19,7 +32,7 @@ Prereqs:
 ```bash
 # Returns JSON with { user, session_token } and also sets a cookie:
 #   Set-Cookie: session_token=...; HttpOnly; Secure; SameSite=None; Path=/
-curl -sS -X POST "https://your-app.com/api/auth/test-login" \
+curl -sS -X POST "http://localhost:8000/api/auth/test-login" \
   -H "X-Test-Auth: $TEST_AUTH_TOKEN"
 ```
 
@@ -118,4 +131,8 @@ await page.context.add_cookies([{
 await page.goto("https://your-app.com/dashboard");
 ```
 
-Tip: If you’re testing on plain HTTP locally and cookies aren’t sticking, prefer `Authorization: Bearer ...` for local runs (or run the app behind HTTPS).
+Tip: If you're testing on plain HTTP locally and cookies aren't sticking, prefer `Authorization: Bearer ...` for local runs (or run the app behind HTTPS).
+
+### Cookie behavior on localhost
+
+The backend detects localhost and uses SameSite=Lax (not None+Secure) so cookies work over plain HTTP. This is handled by `_cookie_settings_for_request()` in server.py.

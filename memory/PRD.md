@@ -15,7 +15,7 @@ Build an AI-Powered Recommendations Engine for Scope 3 "Reduce" Module - a platf
 4. **Carbon Intensity Heatmap** - Visual representation of supplier emissions
 5. **User Authentication** - Emergent-managed Google OAuth
 
-## What's Been Implemented (Date: 2026-02-04)
+## What's Been Implemented (Date: 2026-02-06)
 
 ### Backend (FastAPI)
 - ✅ MongoDB integration with supplier_benchmarks and recommendation_content collections
@@ -28,6 +28,9 @@ Build an AI-Powered Recommendations Engine for Scope 3 "Reduce" Module - a platf
   - ✅ Evidence primitives: render PDF → OCR blocks → field provenance records
   - ✅ Quality primitives: deterministic anomaly scan + fix-queue statuses
   - ✅ Reporting period locks: enforce immutability on write endpoints (423 Locked)
+- ✅ Report module: aggregates measure/engagements/anomalies/audit into audit-ready dashboard
+- ✅ Integrations catalog: 17 connectors across ERP, P2P, Travel, Logistics, Sustainability, Supplier Portal categories with demo-sync
+- ✅ Render deployment: single-service (SERVE_FRONTEND_DIR) at https://scope3-execution.onrender.com
 
 ### Frontend (React)
 - ✅ Landing page with "Mission Control for Earth" aesthetic
@@ -42,6 +45,10 @@ Build an AI-Powered Recommendations Engine for Scope 3 "Reduce" Module - a platf
 - ✅ Dark theme with Barlow Condensed + Manrope fonts
   - ✅ Evidence module: upload PDFs, render pages, OCR, bbox overlay + provenance save
   - ✅ Quality module: anomaly queue + deep-link to Evidence for remediation
+- ✅ Report page: executive summary, category breakdown, engagement progress, data quality summary, supplier inventory table, audit trail, methodology section, export buttons (CSRD E1-6, GHG Protocol, PDF)
+- ✅ Integrations page: 17 connector cards with connect/disconnect/demo-sync, vendor outreach tab
+- ✅ Quality page: anomaly table with filter/resolve/ignore, run scan button, severity badges
+- ✅ Demo mode auto-auth: ProtectedRoute auto-authenticates via test-login (no Emergent OAuth needed locally)
 
 ### Design System
 - Dark background (#0A0A0A) with green accents (#22C55E)
@@ -52,10 +59,12 @@ Build an AI-Powered Recommendations Engine for Scope 3 "Reduce" Module - a platf
 ## Architecture
 ```
 Frontend (React + Tailwind + Shadcn) → Backend (FastAPI) → MongoDB
-                                           ↓
-                               Gemini 3 Flash (AI Recommendations)
-                                           ↓
-                               Emergent Auth (Google OAuth)
+    ├── Measure / Reduce / Engage            ↓
+    ├── Integrations (17 connectors)    Gemini 3 Flash (AI Recommendations)
+    ├── Quality (anomaly scan)               ↓
+    └── Report (audit-ready)         Emergent Auth (Google OAuth)
+                                             ↓
+                                   Render (single-service deploy)
 ```
 
 ## Tech Stack
@@ -79,6 +88,9 @@ Frontend (React + Tailwind + Shadcn) → Backend (FastAPI) → MongoDB
 - [x] **NEW: Evidence Library (MVP)** - Upload PDFs, render pages, OCR blocks, bbox overlay, store field-level provenance
 - [x] **NEW: Quality (MVP)** - Deterministic anomaly scan + fix-queue workflow
 - [x] **NEW: Reporting Period Locks (MVP)** - Lock a period to prevent mutation (423 Locked)
+- [x] **NEW: Report Dashboard** - Audit-ready Scope 3 report aggregating all modules
+- [x] **NEW: Integrations Catalog** - 17 connector cards for ERP/P2P/Travel/Logistics/Sustainability
+- [x] **NEW: Render Deployment** - Single-service deploy with SERVE_FRONTEND_DIR
 
 ### P1 (Backlog)
 - [ ] Team collaboration + RBAC (preparer/reviewer/auditor roles)
@@ -102,4 +114,4 @@ Frontend (React + Tailwind + Shadcn) → Backend (FastAPI) → MongoDB
 4. Connect provenance requirements to KPIs (Measure/Reduce) and block report export if missing
 5. Add structured extraction templates + deterministic validators (units, numeric ranges, reconciliation)
 6. Add org/team model + roles + period close workflow
-7. Add deployment artifacts + CI workflow (run `make ci` on PRs)
+7. ~~Add deployment artifacts + CI workflow~~ ✅ DONE (Render single-service)

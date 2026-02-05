@@ -54,6 +54,8 @@ EOF
 make setup
 ```
 
+> **Note:** `npm install` in the frontend requires the `--legacy-peer-deps` flag due to a `react-day-picker` peer dependency conflict. The Makefile handles this automatically.
+
 ### 3) Run backend + frontend
 
 Backend (from repo root):
@@ -76,9 +78,11 @@ Open `http://localhost:3000`.
 
 The backend sets `Secure; SameSite=None` cookies (required for cross-site XHR in production). Browsers will not set `Secure` cookies over plain `http`.
 
-For local development, use one of:
+In demo mode (`TEST_MODE=true`), the frontend `ProtectedRoute` in `App.js` auto-authenticates by calling `POST /api/auth/test-login` on mount, so no manual HTTPS or ngrok setup is needed for local development.
 
-- Run the backend behind HTTPS (recommended; e.g. `ngrok http 8000`) and set `REACT_APP_BACKEND_URL` to the HTTPS URL.
+For non-demo local development, use one of:
+
+- Run the backend behind HTTPS (e.g. `ngrok http 8000`) and set `REACT_APP_BACKEND_URL` to the HTTPS URL.
 - Use the dev/test login flow for API testing (see `TEST_MODE` below) instead of the browser UI.
 
 ## Environment variables
@@ -98,6 +102,7 @@ Feature-gated / optional:
 Deployment / ops:
 
 - `CORS_ORIGINS`: Comma-separated list of allowed origins for credentialed browser requests (set explicitly in production).
+- `SERVE_FRONTEND_DIR`: Path to a built CRA frontend directory (e.g. `./frontend/build`). When set, the backend serves the SPA from the same origin, eliminating the need for separate frontend hosting.
 
 Test-only:
 
@@ -106,7 +111,7 @@ Test-only:
 
 ### Frontend (`frontend/.env`)
 
-- `REACT_APP_BACKEND_URL`: Base URL of the backend (the app builds `.../api/*` paths from this).
+- `REACT_APP_BACKEND_URL`: Base URL of the backend (the app builds `.../api/*` paths from this). Set to empty string when using `SERVE_FRONTEND_DIR` (same-origin), or to the backend URL (e.g. `http://localhost:8000`) for a separate frontend dev server.
 
 ## Core workflows
 
@@ -167,6 +172,10 @@ Connecting a tool and running “Demo sync” deterministically seeds Measure in
 - State: `GET /api/integrations/state`, `POST /api/integrations/state`
 - Demo sync: `POST /api/integrations/{connector_id}/demo-sync?period=...`
 
+### Report
+
+The Report module aggregates data from Measure, Engage, Quality, and Audit endpoints into an audit-ready dashboard with export buttons (CSRD E1-6, GHG Protocol, PDF). No additional backend endpoint needed -- purely frontend aggregation.
+
 ## Testing / CI
 
 CI entrypoint:
@@ -187,6 +196,16 @@ Useful targets:
 - `make backend-test`
 - `make frontend-setup`
 - `make frontend-build`
+
+## Deployment (Render)
+
+The app runs as a single Render web service at https://scope3-execution.onrender.com.
+
+- **Build command**: installs Python dependencies and builds the CRA frontend (`pip install -r backend/requirements.txt && cd frontend && npm install --legacy-peer-deps && npm run build`).
+- **Start command**: runs uvicorn (`uvicorn backend.server:app --host 0.0.0.0 --port $PORT`).
+- **`SERVE_FRONTEND_DIR`**: set to `./frontend/build` so the backend serves the built SPA from the same origin. This eliminates the need for separate frontend hosting and avoids cross-origin cookie issues.
+
+No separate frontend deploy or CDN is required -- the backend handles both API requests and static asset serving.
 
 ## Docs
 

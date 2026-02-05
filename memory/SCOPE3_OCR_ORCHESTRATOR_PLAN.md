@@ -2,7 +2,7 @@
 
 **Decision:** Use GPT‑5.2 for **(A) narrative + decision routing (tool calling) only**. The LLM must **never** invent numbers. All numeric outputs (tCO₂e, intensities, deltas, totals, % reductions) come only from deterministic tools (OCR/extraction/compute).
 
-## Current status (as of 2026-02-05)
+## Current status (as of 2026-02-06)
 
 Implemented thin-slices that make the Evidence + Quality loop testable end-to-end:
 
@@ -20,8 +20,11 @@ Implemented thin-slices that make the Evidence + Quality loop testable end-to-en
 - Reporting period locks (MVP):
   - Manage locks: `POST|GET /api/execution/reporting-period-locks`, `POST /api/execution/reporting-period-locks/{period}/lock`
   - Enforced with `423 Locked` on key write endpoints when locked
+- Report module: audit-ready dashboard aggregating Measure + Engage + Quality + Audit data
+- Integrations catalog: 17 connectors with demo-sync flows
+- Render deployment: single-service at https://scope3-execution.onrender.com
 
-Remaining: structured extraction templates beyond OCR blocks, deterministic computation pipeline for uploaded supplier docs, evidence review/approval UI, and assurance-grade report exports.
+Remaining: structured extraction templates beyond OCR blocks, deterministic computation pipeline for uploaded supplier docs, and assurance-grade report exports.
 
 ---
 
