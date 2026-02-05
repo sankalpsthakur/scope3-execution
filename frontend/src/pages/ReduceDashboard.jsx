@@ -187,10 +187,10 @@ export default function ReduceDashboard({ onGoToEngage }) {
 
   useEffect(() => {
     // Ensure table data is refreshed when switching back to table view.
-    if (viewMode === "table") {
+    if (viewMode === "table" && pipelineReady) {
       fetchFilteredSuppliers();
     }
-  }, [viewMode, fetchFilteredSuppliers]);
+  }, [viewMode, pipelineReady, fetchFilteredSuppliers]);
 
   const sortedSuppliers = [...suppliers].sort((a, b) => {
     const aVal = a[sortConfig.key];
