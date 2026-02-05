@@ -954,9 +954,15 @@ def main():
     tester = Scope3ReduceAPITester()
     
     try:
-        # Check if we should run only regression test
-        if len(sys.argv) > 1 and sys.argv[1] == "--regression":
-            success = tester.run_regression_test_only()
+        # Check command line arguments
+        if len(sys.argv) > 1:
+            if sys.argv[1] == "--regression":
+                success = tester.run_regression_test_only()
+            elif sys.argv[1] == "--ocr":
+                success = tester.run_ocr_test_only()
+            else:
+                print("Usage: python backend_test.py [--regression|--ocr]")
+                return 1
         else:
             success = tester.run_all_tests()
         
