@@ -452,15 +452,6 @@ async def register_disclosure_sources(payload: List[DisclosureSourceRegister], r
     await _log_audit(tenant_id, "pipeline.sources.register", {"count": len(docs)})
     return {"message": "Sources registered", "count": len(docs)}
 
-    i = 0
-    while i < len(text):
-        end = min(len(text), i + chunk_size)
-        chunks.append(text[i:end])
-        if end == len(text):
-            break
-        i = max(0, end - overlap)
-    return chunks
-
 
 async def _vector_search(tenant_id: str, company_id: str, category: str, query: str, k: int = 6) -> List[Dict[str, Any]]:
     qvec = _embed_mock(query)
