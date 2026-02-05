@@ -10,10 +10,12 @@ from pydantic import BaseModel, Field, ConfigDict
 import math
 import re
 import hashlib
+import base64
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from cryptography.fernet import Fernet
 from apscheduler.triggers.cron import CronTrigger
 from pypdf import PdfReader
+import fitz  # PyMuPDF
 from typing import List, Optional, Dict, Any, Tuple
 import uuid
 from datetime import datetime, timezone, timedelta
