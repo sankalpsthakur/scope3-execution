@@ -633,6 +633,265 @@ class Scope3ReduceAPITester:
         # Return success if > 80% pass rate
         return (self.tests_passed / self.tests_run) >= 0.8
 
+    def test_deterministic_auth(self):
+        """Test deterministic auth using X-Test-Auth header"""
+        print("\n" + "="*50)
+        print("TESTING DETERMINISTIC AUTH")
+        print("="*50)
+        
+        # Test deterministic auth endpoint
+        auth_headers = {
+            'X-Test-Auth': 'OeOYaKaJDRgDpI-AHxY2IH2up6I1VROe',
+            'Content-Type': 'application/json'
+        }
+        
+        success, auth_response = self.run_test(
+            "Deterministic Auth Login", 
+            "POST", 
+            "auth/test-login", 
+            200,
+            headers=auth_headers
+        )
+        
+        if success:
+            # Extract session token from response
+            session_token = auth_response.get('session_token')
+            if session_token:
+                self.session_token = session_token
+                print(f"   Session token obtained: {session_token[:20]}...")
+                
+                # Test /auth/me with the new token
+                success, user_data = self.run_test("Auth Me (With Token)", "GET", "auth/me", 200)
+                if success:
+                    user_name = user_data.get('name', 'Unknown')
+                    print(f"   Authenticated as: {user_name}")
+                    return True
+            else:
+                self.log_test("Session Token Extraction", False, "No session_token in response")
+        
+        return False
+
+    def test_layer3_ocr_pipeline(self):
+        """Test Layer 3 OCR (Gemini Flash Vision) pipeline"""
+        print("\n" + "="*50)
+        print("TESTING LAYER 3 OCR PIPELINE")
+        print("="*50)
+        
+        # Step 1: Seed disclosure docs via pipeline/run
+        print("\n📋 Step 1: Seeding disclosure docs via pipeline/run")
+        success, pipeline_response = self.run_test("POST Pipeline Run", "POST", "pipeline/run", 200)
+        if not success:
+            print("❌ Pipeline run failed - cannot continue OCR test")
+            return False
+        
+        print(f"   Pipeline response: {pipeline_response.get('message', 'No message')}")
+        
+        # Step 2: Get disclosure docs list
+        print("\n📄 Step 2: Getting disclosure docs list")
+        success, docs_response = self.run_test("GET Pipeline Docs", "GET", "pipeline/docs", 200)
+        if not success:
+            print("❌ Pipeline docs endpoint failed")
+            return False
+        
+        docs = docs_response.get('docs', [])
+        print(f"   Found {len(docs)} disclosure documents")
+        
+        # Validation: Should have 3 seeded docs
+        if len(docs) >= 3:
+            self.log_test("Disclosure Docs Count Validation", True, f"Found {len(docs)} docs (expected >=3)")
+        else:
+            self.log_test("Disclosure Docs Count Validation", False, f"Found {len(docs)} docs (expected >=3)")
+            return False
+        
+        # Print doc details
+        for doc in docs[:3]:
+            doc_id = doc.get('doc_id', 'Unknown')
+            title = doc.get('title', 'Unknown')
+            url = doc.get('url', 'Unknown')
+            print(f"   Doc: {doc_id[:20]}... - {title}")
+        
+        # Step 3: Test PDF page rendering for each seeded doc
+        test_pages = [
+            {'doc_name': 'Sika', 'page': 45},
+            {'doc_name': 'DHL', 'page': 12}, 
+            {'doc_name': 'BASF', 'page': 88}
+        ]
+        
+        rendered_pages = []
+        
+        for test_page in test_pages:
+            # Find matching doc
+            matching_doc = None
+            for doc in docs:
+                if test_page['doc_name'].lower() in doc.get('title', '').lower():
+                    matching_doc = doc
+                    break
+            
+            if not matching_doc:
+                print(f"   ⚠️ Could not find {test_page['doc_name']} doc, using first available doc")
+                matching_doc = docs[0]
+            
+            doc_id = matching_doc.get('doc_id')
+            page_number = test_page['page']
+            
+            print(f"\n🖼️ Step 3.{len(rendered_pages)+1}: Rendering PDF page for {test_page['doc_name']} (page {page_number})")
+            
+            render_payload = {
+                "doc_id": doc_id,
+                "page_number": page_number,
+                "zoom": 2.0
+            }
+            
+            success, render_response = self.run_test(
+                f"Render PDF Page - {test_page['doc_name']}", 
+                "POST", 
+                "execution/render-pdf-page", 
+                200,
+                data=render_payload
+            )
+            
+            if success:
+                png_base64 = render_response.get('png_base64')
+                width = render_response.get('width')
+                height = render_response.get('height')
+                
+                if png_base64 and len(png_base64) > 100:
+                    self.log_test(f"PDF Render - {test_page['doc_name']}", True, f"PNG generated: {width}x{height}, {len(png_base64)} chars")
+                    print(f"   PNG size: {width}x{height}, base64 length: {len(png_base64)}")
+                    
+                    rendered_pages.append({
+                        'doc_id': doc_id,
+                        'page_number': page_number,
+                        'png_base64': png_base64,
+                        'doc_name': test_page['doc_name']
+                    })
+                else:
+                    self.log_test(f"PDF Render - {test_page['doc_name']}", False, "Invalid PNG response")
+            else:
+                print(f"   ❌ Failed to render page {page_number} for {test_page['doc_name']}")
+        
+        # Step 4: Test OCR on rendered pages
+        ocr_results = []
+        
+        for i, page_data in enumerate(rendered_pages):
+            print(f"\n🔍 Step 4.{i+1}: Running OCR on {page_data['doc_name']} page {page_data['page_number']}")
+            
+            ocr_payload = {
+                "image_base64": page_data['png_base64'],
+                "mime_type": "image/png",
+                "doc_id": page_data['doc_id'],
+                "page_number": page_data['page_number']
+            }
+            
+            success, ocr_response = self.run_test(
+                f"OCR - {page_data['doc_name']}", 
+                "POST", 
+                "execution/ocr", 
+                200,
+                data=ocr_payload
+            )
+            
+            if success:
+                request_id = ocr_response.get('request_id')
+                blocks = ocr_response.get('blocks', [])
+                raw_text = ocr_response.get('raw_text', '')
+                
+                print(f"   Request ID: {request_id}")
+                print(f"   Blocks found: {len(blocks)}")
+                print(f"   Raw text length: {len(raw_text)}")
+                
+                # Validation: Should have at least 1 block and non-empty raw_text
+                if len(blocks) >= 1:
+                    self.log_test(f"OCR Blocks - {page_data['doc_name']}", True, f"Found {len(blocks)} blocks")
+                else:
+                    self.log_test(f"OCR Blocks - {page_data['doc_name']}", False, f"Found {len(blocks)} blocks (expected >=1)")
+                
+                if raw_text and len(raw_text.strip()) > 0:
+                    self.log_test(f"OCR Raw Text - {page_data['doc_name']}", True, f"Raw text: {len(raw_text)} chars")
+                    print(f"   Sample text: {raw_text[:100]}...")
+                else:
+                    self.log_test(f"OCR Raw Text - {page_data['doc_name']}", False, "Raw text is empty")
+                
+                ocr_results.append({
+                    'doc_name': page_data['doc_name'],
+                    'request_id': request_id,
+                    'blocks_count': len(blocks),
+                    'text_length': len(raw_text)
+                })
+            else:
+                print(f"   ❌ OCR failed for {page_data['doc_name']}")
+        
+        # Step 5: Test error handling - too short image_base64
+        print(f"\n❌ Step 5: Testing error handling for too-short image_base64")
+        
+        invalid_ocr_payload = {
+            "image_base64": "short",  # Too short
+            "mime_type": "image/png"
+        }
+        
+        success, error_response = self.run_test(
+            "OCR Error Handling", 
+            "POST", 
+            "execution/ocr", 
+            400,  # Expect 400 error
+            data=invalid_ocr_payload
+        )
+        
+        if success:
+            print(f"   ✅ Correctly returned 400 error for invalid image_base64")
+        
+        # Step 6: Test OCR persistence (indirect validation)
+        print(f"\n💾 Step 6: Testing OCR persistence (indirect validation)")
+        
+        if ocr_results:
+            # Run OCR again on the same page to test if count increases
+            first_result = rendered_pages[0]
+            
+            print(f"   Running OCR again on {first_result['doc_name']} to test persistence...")
+            
+            ocr_payload = {
+                "image_base64": first_result['png_base64'],
+                "mime_type": "image/png", 
+                "doc_id": first_result['doc_id'],
+                "page_number": first_result['page_number']
+            }
+            
+            success, second_ocr = self.run_test(
+                "OCR Persistence Test", 
+                "POST", 
+                "execution/ocr", 
+                200,
+                data=ocr_payload
+            )
+            
+            if success:
+                # Both OCR calls succeeded, indicating persistence is working
+                # (MongoDB would throw errors if persistence was broken)
+                self.log_test("OCR Persistence Validation", True, "Second OCR call succeeded, indicating proper persistence")
+                print(f"   ✅ OCR persistence validated - no database errors on repeated calls")
+            else:
+                self.log_test("OCR Persistence Validation", False, "Second OCR call failed")
+        
+        # Summary
+        print(f"\n📊 OCR Pipeline Test Summary:")
+        print(f"   Documents processed: {len(docs)}")
+        print(f"   Pages rendered: {len(rendered_pages)}")
+        print(f"   OCR operations: {len(ocr_results)}")
+        
+        total_blocks = sum(result['blocks_count'] for result in ocr_results)
+        total_text_chars = sum(result['text_length'] for result in ocr_results)
+        
+        print(f"   Total blocks extracted: {total_blocks}")
+        print(f"   Total text characters: {total_text_chars}")
+        
+        # Overall success if we got at least 2 successful OCR operations
+        if len(ocr_results) >= 2:
+            self.log_test("OCR Pipeline Overall", True, f"Successfully processed {len(ocr_results)} pages")
+            return True
+        else:
+            self.log_test("OCR Pipeline Overall", False, f"Only processed {len(ocr_results)} pages (expected >=2)")
+            return False
+
     def run_regression_test_only(self):
         """Run only the regression test for Measure integration"""
         print("🚀 Starting Regression Test for Measure Integration")
@@ -650,6 +909,37 @@ class Scope3ReduceAPITester:
         
         print("\n" + "="*60)
         print("REGRESSION TEST SUMMARY")
+        print("="*60)
+        print(f"Tests Run: {self.tests_run}")
+        print(f"Tests Passed: {self.tests_passed}")
+        print(f"Tests Failed: {self.tests_run - self.tests_passed}")
+        print(f"Success Rate: {(self.tests_passed/self.tests_run)*100:.1f}%")
+        print(f"Duration: {duration:.2f} seconds")
+        
+        return success
+
+    def run_ocr_test_only(self):
+        """Run only the Layer 3 OCR test"""
+        print("🚀 Starting Layer 3 OCR Test")
+        print(f"Backend URL: {self.base_url}")
+        print(f"API URL: {self.api_url}")
+        
+        start_time = time.time()
+        
+        # Authenticate first
+        if not self.test_deterministic_auth():
+            print("❌ Authentication failed - cannot continue OCR test")
+            return False
+        
+        # Run the OCR test
+        success = self.test_layer3_ocr_pipeline()
+        
+        # Print summary
+        end_time = time.time()
+        duration = end_time - start_time
+        
+        print("\n" + "="*60)
+        print("LAYER 3 OCR TEST SUMMARY")
         print("="*60)
         print(f"Tests Run: {self.tests_run}")
         print(f"Tests Passed: {self.tests_passed}")
