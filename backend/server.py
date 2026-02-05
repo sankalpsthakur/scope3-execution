@@ -1514,6 +1514,48 @@ def _uncertainty_for_method(method: str) -> str:
 
 
 def _quality_for_record(record: dict) -> str:
+
+
+# ==================== EPIC I: ADMIN ENDPOINTS (MVP) ====================
+
+@api_router.get("/admin/audit")
+async def admin_audit(request: Request, limit: int = 50):
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    events = (
+        await db.audit_events.find({"user_id": tenant_id}, {"_id": 0})
+        .sort("created_at", -1)
+        .to_list(limit)
+    )
+    return {"events": events}
+
+
+@api_router.get("/admin/metrics")
+async def admin_metrics(request: Request):
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    suppliers = await db.supplier_benchmarks.count_documents({"tenant_id": tenant_id})
+    recs = await db.recommendation_content.count_documents({"tenant_id": tenant_id})
+    docs = await db.disclosure_docs.count_documents({"tenant_id": tenant_id})
+    sources = await db.disclosure_sources.count_documents({"tenant_id": tenant_id})
+    chunks = await db.disclosure_chunks.count_documents({"tenant_id": tenant_id})
+
+    last_run = await db.pipeline_runs.find_one({"tenant_id": tenant_id}, {"_id": 0}, sort=[("started_at", -1)])
+
+    return {
+        "tenant_id": tenant_id,
+        "counts": {
+            "benchmarks": suppliers,
+            "recommendations": recs,
+            "sources": sources,
+            "docs": docs,
+            "chunks": chunks,
+        },
+        "last_pipeline_run": last_run,
+    }
+
     # Minimal: if missing factor match, quality low.
     if record.get("factor_match") is False:
         return "low"
