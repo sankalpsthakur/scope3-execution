@@ -86,8 +86,8 @@
     }
   },
   "test_environment": {
-    "frontend_url": "https://scope3-tracker.preview.emergentagent.com",
-    "backend_api": "https://scope3-tracker.preview.emergentagent.com/api",
+    "frontend_url": "https://scope3-carbon-1.preview.emergentagent.com",
+    "backend_api": "https://scope3-carbon-1.preview.emergentagent.com/api",
     "auth_method": "deterministic_test_auth",
     "test_token": "OeOYaKaJDRgDpI-AHxY2IH2up6I1VROe",
     "browser": "Playwright Chromium",

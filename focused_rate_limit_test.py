@@ -13,7 +13,7 @@ def test_deep_dive_rate_limit():
     """Test deep dive rate limit (should be 15/minute according to server.py line 619)"""
     print("🔬 Testing Deep Dive Rate Limit (Expected: 15/minute)")
     
-    base_url = "https://scope3-tracker.preview.emergentagent.com"
+    base_url = "https://scope3-carbon-1.preview.emergentagent.com"
     api_url = f"{base_url}/api"
     session_token = "test_session_1770244803683"
     
@@ -70,7 +70,7 @@ def test_pdf_export_rate_limit():
     """Test PDF export rate limit (should be 10/minute according to server.py line 757)"""
     print("\n📄 Testing PDF Export Rate Limit (Expected: 10/minute)")
     
-    base_url = "https://scope3-tracker.preview.emergentagent.com"
+    base_url = "https://scope3-carbon-1.preview.emergentagent.com"
     api_url = f"{base_url}/api"
     session_token = "test_session_1770244803683"
     
@@ -128,7 +128,7 @@ def test_audit_events():
     """Test audit events generation"""
     print("\n📊 Testing Audit Events Generation")
     
-    base_url = "https://scope3-tracker.preview.emergentagent.com"
+    base_url = "https://scope3-carbon-1.preview.emergentagent.com"
     api_url = f"{base_url}/api"
     session_token = "test_session_1770244803683"
     
