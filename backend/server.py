@@ -553,6 +553,87 @@ async def seed_disclosure_sources(request: Request):
 
 
 async def _seed_doc_text(url: str) -> str:
+
+
+async def _download_pdf(url: str) -> bytes:
+    async with httpx.AsyncClient(timeout=60) as c:
+        r = await c.get(url)
+        r.raise_for_status()
+        return r.content
+
+
+def _pdf_pages_to_text(pdf_bytes: bytes) -> List[Tuple[int, str]]:
+    """Extract text per page from PDF bytes."""
+    reader = PdfReader(BytesIO(pdf_bytes))
+    pages: List[Tuple[int, str]] = []
+    for i, page in enumerate(reader.pages, start=1):
+        try:
+            text = page.extract_text() or ""
+        except Exception:
+            text = ""
+        pages.append((i, _clean_text(text)))
+    return pages
+
+
+@api_router.post("/pipeline/download")
+async def download_disclosures(request: Request):
+    """Download all registered PDF sources for the tenant into uploaded_reports/.
+
+    Stores encrypted bytes on disk if DOCSTORE_KEY is configured.
+    """
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    await _rate_limit_persistent(tenant_id, action="pipeline_download", limit=3, window_seconds=60)
+
+    sources = await db.disclosure_sources.find(
+        {"tenant_id": tenant_id, "url": {"$regex": r"^https://"}},
+        {"_id": 0},
+    ).to_list(200)
+
+    if not sources:
+        return {"message": "No https PDF sources registered", "downloaded": 0}
+
+    await db.disclosure_docs.create_index([("tenant_id", 1), ("doc_id", 1)])
+
+    downloaded = 0
+    failures = []
+
+    for s in sources:
+        try:
+            pdf = await _download_pdf(s["url"])
+            sha = hashlib.sha256(pdf).hexdigest()
+            doc_id = _hash_id(tenant_id, "doc", sha)
+
+            local_path = UPLOAD_DIR / f"{tenant_id}_{doc_id}.pdf.enc"
+            local_path.write_bytes(_encrypt_bytes(pdf))
+
+            doc = {
+                "doc_id": doc_id,
+                "tenant_id": tenant_id,
+                "company_id": s["company_id"],
+                "title": s["title"],
+                "url": s["url"],
+                "content_type": "pdf",
+                "sha256": sha,
+                "local_path": str(local_path),
+                "downloaded_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            await db.disclosure_docs.replace_one(
+                {"tenant_id": tenant_id, "doc_id": doc_id},
+                doc,
+                upsert=True,
+            )
+
+            downloaded += 1
+        except Exception as e:
+            failures.append({"url": s.get("url"), "error": str(e)})
+
+    await _log_audit(tenant_id, "pipeline.download", {"downloaded": downloaded, "failures": len(failures)})
+    return {"message": "Download complete", "downloaded": downloaded, "failures": failures}
+
     # Seeded corpus (realistic excerpts; in production this would be parsed from PDFs)
     if url.startswith("seed://sika"):
         return """
