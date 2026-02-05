@@ -7,6 +7,7 @@ import ReduceDashboard from "@/pages/ReduceDashboard";
 import EngagePage from "@/pages/EngagePage";
 import MeasurePage from "@/pages/MeasurePage";
 import ReportPage from "@/pages/ReportPage";
+import EvidencePage from "@/pages/EvidencePage";
 
 import { useAuth } from "@/App";
 
