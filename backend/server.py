@@ -400,6 +400,48 @@ def _chunk_text(text: str, chunk_size: int = 1200, overlap: int = 120) -> List[s
     if not text:
         return []
     chunks = []
+
+
+class DisclosureSourceRegister(BaseModel):
+    company_id: str
+    category: str
+    title: str
+    url: str
+
+
+@api_router.post("/pipeline/sources/register")
+async def register_disclosure_sources(payload: List[DisclosureSourceRegister], request: Request):
+    """Register disclosure sources (PDF URLs only for this phase)."""
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    for s in payload:
+        if not _is_pdf_url(s.url):
+            raise HTTPException(status_code=400, detail=f"Only https PDF URLs allowed: {s.url}")
+
+    await db.disclosure_sources.create_index([("tenant_id", 1), ("company_id", 1), ("category", 1)])
+
+    docs = []
+    for s in payload:
+        docs.append(
+            {
+                "id": _hash_id(tenant_id, "src", s.company_id, s.category, s.url),
+                "tenant_id": tenant_id,
+                "company_id": s.company_id,
+                "category": s.category,
+                "title": s.title,
+                "url": s.url,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+
+    # Upsert each to avoid duplicates
+    for d in docs:
+        await db.disclosure_sources.replace_one({"id": d["id"]}, d, upsert=True)
+
+    await _log_audit(tenant_id, "pipeline.sources.register", {"count": len(docs)})
+    return {"message": "Sources registered", "count": len(docs)}
+
     i = 0
     while i < len(text):
         end = min(len(text), i + chunk_size)
