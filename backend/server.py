@@ -324,6 +324,36 @@ def _rate_limit(key: str, limit: int, window_seconds: int = 60) -> None:
 
 # ==================== EPIC D (MVP): INGESTION + CHUNKING + "VECTOR" STORE ====================
 
+
+
+def _get_doc_cipher() -> Optional[Fernet]:
+    key = os.environ.get("DOCSTORE_KEY")
+    if not key:
+        return None
+    try:
+        return Fernet(key.encode() if isinstance(key, str) else key)
+    except Exception:
+        return None
+
+
+def _encrypt_bytes(data: bytes) -> bytes:
+    cipher = _get_doc_cipher()
+    if not cipher:
+        return data
+    return cipher.encrypt(data)
+
+
+def _decrypt_bytes(data: bytes) -> bytes:
+    cipher = _get_doc_cipher()
+    if not cipher:
+        return data
+    return cipher.decrypt(data)
+
+
+def _is_pdf_url(url: str) -> bool:
+    url = (url or "").lower().strip()
+    return url.startswith("https://") and (url.endswith(".pdf") or ".pdf?" in url)
+
 UPLOAD_DIR = ROOT_DIR / "uploaded_reports"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
