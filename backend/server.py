@@ -517,23 +517,24 @@ async def execution_ocr(payload: OcrRequest, request: Request):
     raw_text = data.get("raw_text") or ""
 
     # Persist OCR event + blocks (MVP)
-    await db.ocr_blocks.insert_many(
-        [
-            {
-                "id": str(uuid.uuid4()),
-                "tenant_id": tenant_id,
-                "doc_id": payload.doc_id,
-                "page_number": payload.page_number,
-                "supplier_id": payload.supplier_id,
-                "text": b.get("text", ""),
-                "bbox": b.get("bbox", []),
-                "confidence": b.get("confidence"),
-                "created_at": created_at,
-            }
-            for b in blocks
-            if (b.get("text") or "").strip()
-        ]
-    )
+    docs_to_insert = [
+        {
+            "id": str(uuid.uuid4()),
+            "tenant_id": tenant_id,
+            "doc_id": payload.doc_id,
+            "page_number": payload.page_number,
+            "supplier_id": payload.supplier_id,
+            "text": b.get("text", ""),
+            "bbox": b.get("bbox", []),
+            "confidence": b.get("confidence"),
+            "created_at": created_at,
+        }
+        for b in blocks
+        if (b.get("text") or "").strip()
+    ]
+
+    if docs_to_insert:
+        await db.ocr_blocks.insert_many(docs_to_insert)
 
     await _log_audit(tenant_id, "execution.ocr", {"doc_id": payload.doc_id, "page": payload.page_number, "blocks": len(blocks)})
 
