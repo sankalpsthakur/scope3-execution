@@ -1,0 +1,14 @@
+# Optional LLM/OCR dependencies.
+#
+# The core app runs without these (Evidence OCR falls back to deterministic pseudo-blocks).
+# Install when you want real OCR/extraction integrations.
+#
+# Example:
+#   .venv/bin/python -m pip install -r backend/requirements.llm.txt
+
+openai>=1.0.0
+litellm>=1.0.0
+
+# Gemini SDKs (choose whichever your org uses)
+google-genai>=1.0.0
+google-generativeai>=0.8.0

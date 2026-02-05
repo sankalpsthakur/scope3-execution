@@ -38,9 +38,7 @@ import {
   Heatmap,
   EngagementBadge,
 } from "@/components/SupplierComponents";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { apiUrl } from "@/lib/api";
 
 const SortIcon = ({ sortConfig, column }) => {
   if (sortConfig.key !== column) return null;
@@ -66,7 +64,7 @@ export default function ReduceDashboard({ onGoToEngage }) {
 
   const fetchHeatmap = useCallback(async () => {
     try {
-      const res = await axios.get(`${API}/suppliers/heatmap`, { withCredentials: true });
+      const res = await axios.get(apiUrl("/suppliers/heatmap"), { withCredentials: true });
       setHeatmapData(res.data.heatmap_data || []);
     } catch (e) {
       // Fallback to table data.
@@ -85,7 +83,7 @@ export default function ReduceDashboard({ onGoToEngage }) {
 
   const fetchEngagements = useCallback(async () => {
     try {
-      const response = await axios.get(`${API}/engagements`, { withCredentials: true });
+      const response = await axios.get(apiUrl("/engagements"), { withCredentials: true });
       const engagementMap = {};
       (response.data.engagements || []).forEach((e) => {
         engagementMap[e.supplier_id] = e;
@@ -105,7 +103,7 @@ export default function ReduceDashboard({ onGoToEngage }) {
       if (filters.minImpact) params.min_impact = parseFloat(filters.minImpact);
       if (filters.minReduction) params.min_reduction = parseFloat(filters.minReduction);
 
-      const response = await axios.get(`${API}/suppliers/filter`, {
+      const response = await axios.get(apiUrl("/suppliers/filter"), {
         withCredentials: true,
         params,
       });
@@ -146,7 +144,7 @@ export default function ReduceDashboard({ onGoToEngage }) {
     const run = async () => {
       try {
         // Simulate the nightly batch pipeline. This seeds Measure + Reduce + evidence + cached recommendations.
-        await axios.post(`${API}/pipeline/run`, {}, { withCredentials: true });
+        await axios.post(apiUrl("/pipeline/run"), {}, { withCredentials: true });
         if (cancelled) return;
         setPipelineReady(true);
 
@@ -224,7 +222,7 @@ export default function ReduceDashboard({ onGoToEngage }) {
 
   const updateEngagement = async (supplierId, status) => {
     try {
-      const response = await axios.put(`${API}/engagements/${supplierId}`, { status }, { withCredentials: true });
+      const response = await axios.put(apiUrl(`/engagements/${supplierId}`), { status }, { withCredentials: true });
       setEngagements((prev) => ({ ...prev, [supplierId]: response.data }));
       toast.success("Engagement status updated");
     } catch (error) {

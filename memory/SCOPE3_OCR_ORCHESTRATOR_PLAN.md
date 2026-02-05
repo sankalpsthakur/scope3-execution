@@ -2,6 +2,27 @@
 
 **Decision:** Use GPT‑5.2 for **(A) narrative + decision routing (tool calling) only**. The LLM must **never** invent numbers. All numeric outputs (tCO₂e, intensities, deltas, totals, % reductions) come only from deterministic tools (OCR/extraction/compute).
 
+## Current status (as of 2026-02-05)
+
+Implemented thin-slices that make the Evidence + Quality loop testable end-to-end:
+
+- Evidence Library (MVP):
+  - Upload encrypted PDFs: `POST /api/pipeline/docs/upload`
+  - Render PDF pages: `POST /api/execution/render-pdf-page`
+  - Render & store page images: `POST /api/execution/render-and-store-page`
+  - OCR blocks extraction: `POST /api/execution/ocr`
+  - List OCR blocks for overlays: `GET /api/execution/ocr-blocks`
+  - Field provenance store/list/delete: `POST|GET|DELETE /api/execution/field-provenance*`
+- Quality (MVP):
+  - Anomaly scan + queue: `POST /api/quality/anomalies/run`, `GET /api/quality/anomalies`
+  - Fix-queue actions: `POST /api/quality/anomalies/{id}/status` (open/ignored/resolved)
+  - Missing evidence detection for high-impact benchmark fields: `provenance.missing.*` anomalies
+- Reporting period locks (MVP):
+  - Manage locks: `POST|GET /api/execution/reporting-period-locks`, `POST /api/execution/reporting-period-locks/{period}/lock`
+  - Enforced with `423 Locked` on key write endpoints when locked
+
+Remaining: structured extraction templates beyond OCR blocks, deterministic computation pipeline for uploaded supplier docs, evidence review/approval UI, and assurance-grade report exports.
+
 ---
 
 ## 1) Executive summary (layman-friendly)

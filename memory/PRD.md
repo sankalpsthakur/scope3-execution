@@ -25,6 +25,9 @@ Build an AI-Powered Recommendations Engine for Scope 3 "Reduce" Module - a platf
 - ✅ GET /api/suppliers/{id}/deep-dive - AI-powered recommendation generation
 - ✅ POST /api/seed-data - Mock data seeding (12 suppliers)
 - ✅ Gemini 3 Flash integration for AI recommendations
+  - ✅ Evidence primitives: render PDF → OCR blocks → field provenance records
+  - ✅ Quality primitives: deterministic anomaly scan + fix-queue statuses
+  - ✅ Reporting period locks: enforce immutability on write endpoints (423 Locked)
 
 ### Frontend (React)
 - ✅ Landing page with "Mission Control for Earth" aesthetic
@@ -37,6 +40,8 @@ Build an AI-Powered Recommendations Engine for Scope 3 "Reduce" Module - a platf
 - ✅ Contract clause with copy-to-clipboard
 - ✅ Heatmap view toggle
 - ✅ Dark theme with Barlow Condensed + Manrope fonts
+  - ✅ Evidence module: upload PDFs, render pages, OCR, bbox overlay + provenance save
+  - ✅ Quality module: anomaly queue + deep-link to Evidence for remediation
 
 ### Design System
 - Dark background (#0A0A0A) with green accents (#22C55E)
@@ -71,13 +76,17 @@ Frontend (React + Tailwind + Shadcn) → Backend (FastAPI) → MongoDB
 - [x] **NEW: PDF Export** - Download recommendations as formatted PDF
 - [x] **NEW: Engagement Tracking** - Track supplier engagement status (not_started, in_progress, pending_response, completed, on_hold)
 - [x] **NEW: Data Filtering** - Filter by category, CEE rating, min upstream impact, min reduction potential
+- [x] **NEW: Evidence Library (MVP)** - Upload PDFs, render pages, OCR blocks, bbox overlay, store field-level provenance
+- [x] **NEW: Quality (MVP)** - Deterministic anomaly scan + fix-queue workflow
+- [x] **NEW: Reporting Period Locks (MVP)** - Lock a period to prevent mutation (423 Locked)
 
 ### P1 (Backlog)
-- [ ] Export recommendations to PDF
-- [ ] Supplier engagement tracking
+- [ ] Team collaboration + RBAC (preparer/reviewer/auditor roles)
+- [ ] Period-close workflow (signoff, approvals, locked reports)
 - [ ] Email notifications for high-impact opportunities
 - [ ] Multi-project support
-- [ ] Team collaboration features
+- [ ] Evidence review UX (approve/edit/flag) linked directly from Measure/Reduce KPIs
+- [ ] Structured extraction templates for logistics/energy/procurement docs (beyond OCR blocks)
 
 ### P2 (Future)
 - [ ] Real-time CDP/GRI data ingestion
@@ -90,7 +99,7 @@ Frontend (React + Tailwind + Shadcn) → Backend (FastAPI) → MongoDB
 1. ~~Add PDF export for recommendations~~ ✅ DONE
 2. ~~Implement supplier engagement status tracking~~ ✅ DONE  
 3. ~~Add data filtering (by category, rating, impact threshold)~~ ✅ DONE
-4. Add notification system for high-priority actions
-5. Create settings page for user preferences
-6. Export engagement history to CSV
-7. Add bulk actions for multiple suppliers
+4. Connect provenance requirements to KPIs (Measure/Reduce) and block report export if missing
+5. Add structured extraction templates + deterministic validators (units, numeric ranges, reconciliation)
+6. Add org/team model + roles + period close workflow
+7. Add deployment artifacts + CI workflow (run `make ci` on PRs)

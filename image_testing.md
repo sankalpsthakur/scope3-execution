@@ -3,6 +3,15 @@
 You are the Test Agent responsible for validating image integrations.
 Follow these rules exactly. Do not overcomplicate.
 
+## Auth (don’t skip)
+Most image endpoints are authenticated (they derive `tenant_id` from the current user).
+
+Use either:
+- `Authorization: Bearer <session_token>`, or
+- Cookie `session_token`
+
+For deterministic setup guidance (test-login endpoint, fixed-token Mongo fixture), see `auth_testing.md`.
+
 ## Image Handling Rules
 - Always use base64-encoded images for all tests and requests.
 - Accepted formats: JPEG, PNG, WEBP only.

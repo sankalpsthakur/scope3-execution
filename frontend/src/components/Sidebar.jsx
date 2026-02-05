@@ -5,6 +5,8 @@ import {
   Users,
   FileText,
   Files,
+  ShieldAlert,
+  Plug,
   Settings,
   LogOut,
   ChevronDown,
@@ -77,12 +79,28 @@ export const Sidebar = ({ user, onLogout, activeItem, onNavigate }) => {
               <span>Report</span>
             </button>
             <button
+              onClick={() => navTo("integrations")}
+              className={`sidebar-item w-full text-left ${active === "integrations" ? "active" : ""}`}
+              data-testid="nav-integrations"
+            >
+              <Plug className="w-4 h-4" />
+              <span>Integrations</span>
+            </button>
+            <button
               onClick={() => navTo("evidence")}
               className={`sidebar-item w-full text-left ${active === "evidence" ? "active" : ""}`}
               data-testid="nav-evidence"
             >
               <Files className="w-4 h-4" />
               <span>Evidence</span>
+            </button>
+            <button
+              onClick={() => navTo("quality")}
+              className={`sidebar-item w-full text-left ${active === "quality" ? "active" : ""}`}
+              data-testid="nav-quality"
+            >
+              <ShieldAlert className="w-4 h-4" />
+              <span>Quality</span>
             </button>
           </div>
         </div>

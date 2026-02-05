@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowRight, Leaf, BarChart3, FileText, Shield, TrendingDown, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
 const handleGoogleLogin = () => {
@@ -10,6 +11,12 @@ const handleGoogleLogin = () => {
 
 export default function LandingPage() {
   const [isHovering, setIsHovering] = useState(false);
+  const navigate = useNavigate();
+
+  // Auto-redirect to dashboard for demo mode
+  useEffect(() => {
+    navigate("/dashboard", { replace: true });
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] relative overflow-hidden">

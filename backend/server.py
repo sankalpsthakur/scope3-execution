@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, UploadFile, File, Form
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -23,6 +23,8 @@ import httpx
 
 from fastapi.responses import StreamingResponse
 from io import BytesIO
+from starlette.responses import FileResponse
+from starlette.staticfiles import StaticFiles
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -38,6 +40,165 @@ scheduler: Optional[AsyncIOScheduler] = None
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+# ==================== COOKIE HELPERS ====================
+
+def _cookie_settings_for_request(request: Request) -> Dict[str, Any]:
+    """Choose cookie flags based on environment.
+
+    - Production/browser cross-site XHR: requires SameSite=None + Secure.
+    - Local dev over http://localhost:3000 -> http://localhost:8000: must NOT be Secure; use SameSite=Lax.
+    """
+    host = (request.url.hostname or "").lower()
+    scheme = (request.url.scheme or "").lower()
+
+    is_localhost = host in {"localhost", "127.0.0.1"} or host.endswith(".localhost")
+    is_http = scheme == "http"
+
+    if is_localhost and is_http:
+        return {"secure": False, "samesite": "lax"}
+    return {"secure": True, "samesite": "none"}
+
+# ==================== INTEGRATIONS (DEMO CATALOG) ====================
+
+INTEGRATIONS_CATALOG: List[Dict[str, Any]] = [
+    {
+        "id": "sap_ariba",
+        "name": "SAP Ariba (Buying & Invoicing)",
+        "category": "Procure-to-Pay",
+        "auth": "OAuth / API",
+        "objects": ["suppliers", "purchase_orders", "invoices", "spend_categories"],
+        "notes": "Popular procurement network + P2P suite. Demo seeds invoice/spend lines into Measure.",
+    },
+    {
+        "id": "coupa",
+        "name": "Coupa",
+        "category": "Procure-to-Pay",
+        "auth": "API key",
+        "objects": ["suppliers", "invoices", "spend", "categories"],
+        "notes": "Common P2P for mid/enterprise procurement. Demo seeds spend lines.",
+    },
+    {
+        "id": "oracle_fusion",
+        "name": "Oracle Fusion ERP",
+        "category": "ERP",
+        "auth": "OAuth / API",
+        "objects": ["gl", "ap_invoices", "vendors", "cost_centers"],
+        "notes": "Finance-led ERP source of truth for spend and AP.",
+    },
+    {
+        "id": "netsuite",
+        "name": "Oracle NetSuite",
+        "category": "ERP",
+        "auth": "Token-based",
+        "objects": ["gl", "ap_invoices", "vendors"],
+        "notes": "Common in high-growth and multi-subsidiary orgs.",
+    },
+    {
+        "id": "workday_financials",
+        "name": "Workday Financials",
+        "category": "ERP",
+        "auth": "OAuth / API",
+        "objects": ["suppliers", "invoices", "spend", "org_units"],
+        "notes": "Often paired with Workday HCM; finance + supplier master data.",
+    },
+    {
+        "id": "d365_finance",
+        "name": "Microsoft Dynamics 365 Finance",
+        "category": "ERP",
+        "auth": "OAuth / API",
+        "objects": ["gl", "ap_invoices", "vendors"],
+        "notes": "Common in enterprise Microsoft stacks.",
+    },
+    {
+        "id": "sap_concur",
+        "name": "SAP Concur (Travel & Expense)",
+        "category": "Travel",
+        "auth": "OAuth / API",
+        "objects": ["expenses", "trips", "air", "hotel", "rail"],
+        "notes": "Scope 3 Cat 6 (business travel) and employee spend signals.",
+    },
+    {
+        "id": "project44",
+        "name": "project44 (Logistics Visibility)",
+        "category": "Logistics",
+        "auth": "API key",
+        "objects": ["shipments", "legs", "modes", "weights", "distances"],
+        "notes": "Shipment activity data for Cat 4/9; demo seeds tonne-km.",
+    },
+    {
+        "id": "ecovadis",
+        "name": "EcoVadis",
+        "category": "Vendor ESG",
+        "auth": "API key",
+        "objects": ["supplier_scorecards", "risk_flags"],
+        "notes": "Supplier ESG signals and remediation workflows (non-numeric).",
+    },
+    {
+        "id": "ariba_network",
+        "name": "Ariba Network (Supplier Portal)",
+        "category": "Vendor Portals",
+        "auth": "Portal + API",
+        "objects": ["supplier_invites", "messages", "documents"],
+        "notes": "Supplier-side portal workflows for invites + document exchange.",
+    },
+    {
+        "id": "coupa_supplier_portal",
+        "name": "Coupa Supplier Portal",
+        "category": "Vendor Portals",
+        "auth": "Portal + API",
+        "objects": ["supplier_invites", "questionnaires", "documents"],
+        "notes": "Supplier portal for structured ESG questionnaires + evidence collection.",
+    },
+    {
+        "id": "tradeshift",
+        "name": "Tradeshift",
+        "category": "Vendor Portals",
+        "auth": "OAuth / API",
+        "objects": ["supplier_profiles", "messages", "documents"],
+        "notes": "Network + invoicing portal; use as vendor outreach channel in demo flows.",
+    },
+    {
+        "id": "basware",
+        "name": "Basware Network",
+        "category": "Vendor Portals",
+        "auth": "OAuth / API",
+        "objects": ["suppliers", "messages", "documents"],
+        "notes": "Invoice-to-pay network with supplier participation tracking.",
+    },
+    {
+        "id": "tungsten",
+        "name": "Tungsten Network",
+        "category": "Vendor Portals",
+        "auth": "OAuth / API",
+        "objects": ["suppliers", "messages", "documents"],
+        "notes": "Invoice network; usable as a vendor outreach channel for evidence requests.",
+    },
+    {
+        "id": "ivalua",
+        "name": "Ivalua",
+        "category": "Vendor Portals",
+        "auth": "OAuth / API",
+        "objects": ["suppliers", "questionnaires", "documents"],
+        "notes": "SRM + sourcing suite; questionnaires are useful for ESG data collection.",
+    },
+    {
+        "id": "gepsmart",
+        "name": "GEP SMART",
+        "category": "Vendor Portals",
+        "auth": "OAuth / API",
+        "objects": ["suppliers", "events", "questionnaires"],
+        "notes": "Procurement suite; good fit for structured supplier ESG requests.",
+    },
+    {
+        "id": "sftp_csv",
+        "name": "SFTP / CSV Feed",
+        "category": "File Feeds",
+        "auth": "SSH key",
+        "objects": ["gl_extracts", "invoice_feeds", "meter_reads"],
+        "notes": "Always-on enterprise fallback. Demo seeds spend + electricity kWh.",
+    },
+]
 
 
 # ==================== MODELS ====================
@@ -166,12 +327,13 @@ async def create_session(request: Request, response: Response):
             }
         )
 
+        cookie_settings = _cookie_settings_for_request(request)
         response.set_cookie(
             key="session_token",
             value=session_token,
             httponly=True,
-            secure=True,
-            samesite="none",
+            secure=bool(cookie_settings["secure"]),
+            samesite=str(cookie_settings["samesite"]),
             path="/",
             max_age=7 * 24 * 60 * 60,
         )
@@ -223,15 +385,13 @@ async def test_login(request: Request, response: Response):
         }
     )
 
-    # This cookie must work for cross-site XHR from localhost (http://localhost:3000)
-    # to the backend domain (https://...). Modern browsers require SameSite=None cookies
-    # to be Secure.
+    cookie_settings = _cookie_settings_for_request(request)
     response.set_cookie(
         key="session_token",
         value=session_token,
         httponly=True,
-        secure=True,
-        samesite="none",
+        secure=bool(cookie_settings["secure"]),
+        samesite=str(cookie_settings["samesite"]),
         path="/",
         max_age=24 * 60 * 60,
     )
@@ -361,6 +521,13 @@ def _is_pdf_url(url: str) -> bool:
 UPLOAD_DIR = ROOT_DIR / "uploaded_reports"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
+DISCLOSURE_DOCS_DIR = ROOT_DIR / "disclosure_docs"
+DISCLOSURE_DOCS_DIR.mkdir(exist_ok=True)
+
+
+def _disclosure_doc_local_path(tenant_id: str, doc_id: str) -> Path:
+    return DISCLOSURE_DOCS_DIR / f"{tenant_id}_{doc_id}.pdf.enc"
+
 
 def _clean_text(s: str) -> str:
     s = re.sub(r"\s+", " ", s or " ").strip()
@@ -377,6 +544,9 @@ def _tokenize(s: str) -> List[str]:
 def _hash_id(*parts: str) -> str:
     h = hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
     return h[:24]
+
+def _measure_entity_id(tenant_id: str, period: str, kind: str, key: str) -> str:
+    return _hash_id(tenant_id, "measure", (period or "").strip(), kind.strip(), (key or "").strip())
 
 # ==================== EPIC H (LAYER 3 MVP): OCR / BLOCK EXTRACTION + PROVENANCE ====================
 
@@ -409,6 +579,7 @@ class OcrResponse(BaseModel):
     blocks: List[OcrBlock]
     raw_text: str
     created_at: str
+    stored_block_ids: Optional[List[str]] = None
 
 
 def _b64_to_bytes(b64: str) -> bytes:
@@ -439,7 +610,17 @@ async def _gemini_flash_ocr_blocks(image_base64: str, mime_type: str, session_id
 
     Returns a dict with keys: raw_text, blocks[]
     """
-    from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+    except Exception:
+        # Local/demo fallback: emit deterministic pseudo-blocks with approximate bboxes.
+        # This keeps the evidence UX testable without external dependencies.
+        raw_text = "OCR unavailable (emergentintegrations not installed)."
+        blocks = [
+            {"text": "OCR unavailable", "bbox": [60, 120, 900, 200], "confidence": 0.4},
+            {"text": "Install emergentintegrations + set EMERGENT_LLM_KEY", "bbox": [60, 220, 1200, 320], "confidence": 0.4},
+        ]
+        return {"raw_text": raw_text, "blocks": blocks}
     import json
 
     api_key = os.environ.get("EMERGENT_LLM_KEY")
@@ -528,6 +709,7 @@ async def execution_ocr(payload: OcrRequest, request: Request):
         {
             "id": str(uuid.uuid4()),
             "tenant_id": tenant_id,
+            "request_id": request_id,
             "doc_id": payload.doc_id,
             "page_number": payload.page_number,
             "supplier_id": payload.supplier_id,
@@ -543,6 +725,25 @@ async def execution_ocr(payload: OcrRequest, request: Request):
     if docs_to_insert:
         await db.ocr_blocks.insert_many(docs_to_insert)
 
+    # Persist OCR run summary (raw_text can be large; keep it for provenance/debug)
+    try:
+        await db.ocr_runs.insert_one(
+            {
+                "id": request_id,
+                "tenant_id": tenant_id,
+                "doc_id": payload.doc_id,
+                "page_number": payload.page_number,
+                "supplier_id": payload.supplier_id,
+                "mime_type": payload.mime_type,
+                "blocks_count": len(docs_to_insert),
+                "raw_text": raw_text,
+                "created_at": created_at,
+            }
+        )
+    except Exception:
+        # Avoid breaking core OCR flow due to logging/storage.
+        pass
+
     await _log_audit(tenant_id, "execution.ocr", {"doc_id": payload.doc_id, "page": payload.page_number, "blocks": len(blocks)})
 
     return {
@@ -550,7 +751,391 @@ async def execution_ocr(payload: OcrRequest, request: Request):
         "blocks": blocks,
         "raw_text": raw_text,
         "created_at": created_at,
+        "stored_block_ids": [d["id"] for d in docs_to_insert],
     }
+
+
+class RenderAndStoreRequest(BaseModel):
+    doc_id: str
+    page_number: int = 1
+    zoom: float = 2.0
+    return_image: bool = True
+
+
+def _doc_page_local_path(tenant_id: str, doc_id: str, page_number: int, zoom: float) -> Path:
+    zoom_tag = str(zoom).replace(".", "_")
+    return UPLOAD_DIR / f"{tenant_id}_{doc_id}_p{page_number}_z{zoom_tag}.png.enc"
+
+
+async def _upsert_document_page(
+    tenant_id: str,
+    doc_id: str,
+    page_number: int,
+    zoom: float,
+    png_bytes: bytes,
+    width: int,
+    height: int,
+    mime_type: str = "image/png",
+) -> Dict[str, Any]:
+    await db.document_pages.create_index([("tenant_id", 1), ("doc_id", 1), ("page_number", 1), ("zoom", 1)])
+
+    sha = hashlib.sha256(png_bytes).hexdigest()
+    local_path = _doc_page_local_path(tenant_id, doc_id, page_number, zoom)
+    local_path.write_bytes(_encrypt_bytes(png_bytes))
+
+    page_id = _hash_id(tenant_id, "page", doc_id, str(page_number), str(zoom), sha[:16])
+    rec = {
+        "id": page_id,
+        "tenant_id": tenant_id,
+        "doc_id": doc_id,
+        "page_number": int(page_number),
+        "zoom": float(zoom),
+        "mime_type": mime_type,
+        "width": int(width),
+        "height": int(height),
+        "sha256": sha,
+        "local_path": str(local_path),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.document_pages.replace_one(
+        {"tenant_id": tenant_id, "id": page_id},
+        rec,
+        upsert=True,
+    )
+    return rec
+
+
+@api_router.post("/execution/render-and-store-page")
+async def render_and_store_page(payload: RenderAndStoreRequest, request: Request):
+    """Render a PDF page, persist it as document_pages, and (optionally) return the image."""
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    doc_id = payload.doc_id
+    page_number = int(payload.page_number or 1)
+    zoom = float(payload.zoom or 2.0)
+
+    if not doc_id:
+        raise HTTPException(status_code=400, detail="doc_id required")
+
+    rendered = await render_pdf_page({"doc_id": doc_id, "page_number": page_number, "zoom": zoom}, request)
+    png_b64 = rendered.get("png_base64")
+    if not png_b64:
+        raise HTTPException(status_code=500, detail="Render produced no image")
+
+    png_bytes = _b64_to_bytes(png_b64)
+    page_rec = await _upsert_document_page(
+        tenant_id=tenant_id,
+        doc_id=doc_id,
+        page_number=page_number,
+        zoom=zoom,
+        png_bytes=png_bytes,
+        width=int(rendered.get("width") or 0),
+        height=int(rendered.get("height") or 0),
+        mime_type=rendered.get("mime_type") or "image/png",
+    )
+
+    await _log_audit(tenant_id, "execution.page.render_store", {"doc_id": doc_id, "page": page_number, "zoom": zoom})
+
+    resp = {"page": page_rec}
+    if payload.return_image:
+        resp["image"] = rendered
+    return resp
+
+
+@api_router.get("/execution/document-pages")
+async def list_document_pages(request: Request, doc_id: str):
+    """List stored rendered pages for a document (metadata only)."""
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    pages = (
+        await db.document_pages.find({"tenant_id": tenant_id, "doc_id": doc_id}, {"_id": 0, "local_path": 0})
+        .sort([("page_number", 1), ("zoom", 1)])
+        .to_list(500)
+    )
+    return {"pages": pages}
+
+
+@api_router.get("/execution/document-pages/image")
+async def get_document_page_image(request: Request, page_id: str, include_base64: bool = True):
+    """Fetch a stored page image by page_id."""
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    page = await db.document_pages.find_one({"tenant_id": tenant_id, "id": page_id}, {"_id": 0})
+    if not page:
+        raise HTTPException(status_code=404, detail="Page not found")
+
+    if not include_base64:
+        page.pop("local_path", None)
+        return {"page": page}
+
+    local_path = page.get("local_path")
+    if not local_path:
+        raise HTTPException(status_code=500, detail="Stored page missing local_path")
+
+    enc = Path(local_path).read_bytes()
+    png_bytes = _decrypt_bytes(enc)
+    b64 = base64.b64encode(png_bytes).decode("utf-8")
+
+    page_meta = {k: v for k, v in page.items() if k != "local_path"}
+    return {"page": page_meta, "image": {"png_base64": b64, "width": page.get("width"), "height": page.get("height"), "mime_type": page.get("mime_type")}}
+
+
+@api_router.get("/execution/ocr-blocks")
+async def list_ocr_blocks(request: Request, doc_id: str, page_number: int):
+    """List OCR blocks for a document page (for bbox overlays)."""
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    q: Dict[str, Any] = {"tenant_id": tenant_id, "doc_id": doc_id, "page_number": int(page_number)}
+    blocks = (
+        await db.ocr_blocks.find(q, {"_id": 0})
+        .sort("created_at", -1)
+        .to_list(2000)
+    )
+    return {"blocks": blocks}
+
+
+class FieldProvenanceCreate(BaseModel):
+    entity_type: str
+    entity_id: str
+    field_key: str
+    field_label: Optional[str] = None
+    value: Optional[str] = None
+    unit: Optional[str] = None
+    doc_id: str
+    page_number: int
+    bbox: Optional[List[float]] = None
+    ocr_block_ids: Optional[List[str]] = None
+    ocr_request_id: Optional[str] = None
+    notes: Optional[str] = None
+
+
+def _normalize_unit(unit: Optional[str]) -> Optional[str]:
+    if unit is None:
+        return None
+    u = str(unit).strip()
+    if not u:
+        return None
+
+    key = re.sub(r"\s+", " ", u).strip().lower()
+    key = key.replace("_", " ").strip()
+
+    mapping = {
+        "kg": "kg",
+        "kilogram": "kg",
+        "kilograms": "kg",
+        "g": "g",
+        "gram": "g",
+        "grams": "g",
+        "lb": "lb",
+        "lbs": "lb",
+        "pound": "lb",
+        "pounds": "lb",
+        "t": "t",
+        "ton": "t",
+        "tons": "t",
+        "tonne": "t",
+        "tonnes": "t",
+        "tco2e": "tCO2e",
+        "tonne co2e": "tCO2e",
+        "tonnes co2e": "tCO2e",
+        "mtco2e": "tCO2e",
+        "kgco2e": "kgCO2e",
+        "kg co2e": "kgCO2e",
+        "kwh": "kWh",
+        "kw h": "kWh",
+        "mwh": "MWh",
+        "tonne km": "tonne-km",
+        "tonne-km": "tonne-km",
+        "usd": "USD",
+        "$": "USD",
+        "us$": "USD",
+        "percent": "%",
+        "%": "%",
+    }
+
+    if key in mapping:
+        return mapping[key]
+
+    # Safe fallback: preserve original, but collapse whitespace.
+    return re.sub(r"\s+", " ", u).strip()
+
+
+def _parse_numeric_value(raw: Optional[str]) -> Tuple[Optional[float], str]:
+    if raw is None:
+        return None, "empty"
+
+    s = str(raw).strip()
+    if not s:
+        return None, "empty"
+
+    negative = False
+    if s.startswith("(") and s.endswith(")"):
+        negative = True
+        s = s[1:-1].strip()
+
+    # common decorations
+    s2 = s.replace(",", "")
+    s2 = s2.replace("$", "").replace("US$", "").strip()
+    if s2.endswith("%"):
+        s2 = s2[:-1].strip()
+
+    m = re.search(r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?", s2)
+    if not m:
+        return None, "string"
+
+    try:
+        v = float(m.group(0))
+    except Exception:
+        return None, "string"
+
+    if negative:
+        v = -abs(v)
+
+    if math.isfinite(v):
+        return v, "number"
+    return None, "string"
+
+
+def _validate_bbox(bbox: Optional[List[float]], page_width: Optional[int] = None, page_height: Optional[int] = None) -> Optional[List[float]]:
+    if bbox is None:
+        return None
+    if not isinstance(bbox, list) or len(bbox) != 4:
+        raise HTTPException(status_code=400, detail="bbox must be a 4-item list: [x0,y0,x1,y1] in pixel coords")
+
+    try:
+        x0, y0, x1, y1 = [float(v) for v in bbox]
+    except Exception:
+        raise HTTPException(status_code=400, detail="bbox values must be numeric")
+
+    if not all(math.isfinite(v) for v in [x0, y0, x1, y1]):
+        raise HTTPException(status_code=400, detail="bbox values must be finite numbers")
+    if x0 < 0 or y0 < 0 or x1 < 0 or y1 < 0:
+        raise HTTPException(status_code=400, detail="bbox values must be non-negative pixel coords")
+    if x1 <= x0 or y1 <= y0:
+        raise HTTPException(status_code=400, detail="bbox must satisfy x1>x0 and y1>y0")
+
+    if page_width and page_height and page_width > 0 and page_height > 0:
+        if x1 > page_width + 1e-6 or y1 > page_height + 1e-6:
+            raise HTTPException(status_code=400, detail="bbox must be within page bounds")
+
+    return [x0, y0, x1, y1]
+
+
+@api_router.post("/execution/field-provenance")
+async def create_field_provenance(payload: FieldProvenanceCreate, request: Request):
+    """Store a field-level provenance pointer to evidence (doc/page/bbox/blocks)."""
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    await db.field_provenance.create_index([("tenant_id", 1), ("entity_type", 1), ("entity_id", 1), ("field_key", 1)])
+    await db.field_provenance.create_index([("tenant_id", 1), ("doc_id", 1), ("page_number", 1)])
+
+    if not (payload.entity_type or "").strip():
+        raise HTTPException(status_code=400, detail="entity_type required")
+    if not (payload.entity_id or "").strip():
+        raise HTTPException(status_code=400, detail="entity_id required")
+    if not (payload.field_key or "").strip():
+        raise HTTPException(status_code=400, detail="field_key required")
+    if not (payload.doc_id or "").strip():
+        raise HTTPException(status_code=400, detail="doc_id required")
+    if int(payload.page_number) < 1:
+        raise HTTPException(status_code=400, detail="page_number must be >= 1")
+
+    doc = await db.disclosure_docs.find_one({"tenant_id": tenant_id, "doc_id": payload.doc_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Validate bbox against a known stored render if available (best effort).
+    page_width = None
+    page_height = None
+    try:
+        pg = await db.document_pages.find_one(
+            {"tenant_id": tenant_id, "doc_id": payload.doc_id, "page_number": int(payload.page_number)},
+            {"_id": 0, "width": 1, "height": 1},
+            sort=[("zoom", -1)],
+        )
+        if pg:
+            page_width = int(pg.get("width") or 0) or None
+            page_height = int(pg.get("height") or 0) or None
+    except Exception:
+        pass
+
+    bbox = _validate_bbox(payload.bbox, page_width=page_width, page_height=page_height)
+
+    ocr_block_ids = [str(x).strip() for x in (payload.ocr_block_ids or []) if str(x).strip()]
+    if payload.ocr_block_ids is not None:
+        # Caller explicitly supplied ocr_block_ids; enforce existence if any were provided.
+        if ocr_block_ids:
+            uniq = sorted(set(ocr_block_ids))
+            blocks = await db.ocr_blocks.find({"tenant_id": tenant_id, "id": {"$in": uniq}}, {"_id": 0, "id": 1, "doc_id": 1, "page_number": 1}).to_list(len(uniq))
+            found_ids = {b.get("id") for b in blocks}
+            missing = [bid for bid in uniq if bid not in found_ids]
+            if missing:
+                raise HTTPException(status_code=400, detail=f"ocr_block_ids not found: {missing[:10]}")
+
+            for b in blocks:
+                if b.get("doc_id") != payload.doc_id or int(b.get("page_number") or 0) != int(payload.page_number):
+                    raise HTTPException(status_code=400, detail="ocr_block_ids must match doc_id and page_number")
+
+    parsed_numeric, value_type = _parse_numeric_value(payload.value)
+    unit_norm = _normalize_unit(payload.unit)
+
+    created_at = datetime.now(timezone.utc).isoformat()
+    rec = {
+        "id": str(uuid.uuid4()),
+        "tenant_id": tenant_id,
+        "entity_type": payload.entity_type,
+        "entity_id": payload.entity_id,
+        "field_key": payload.field_key,
+        "field_label": payload.field_label,
+        "value": payload.value,
+        "unit": payload.unit,
+        "unit_norm": unit_norm,
+        "parsed_numeric": parsed_numeric,
+        "value_type": value_type,
+        "doc_id": payload.doc_id,
+        "page_number": int(payload.page_number),
+        "bbox": bbox,
+        "ocr_block_ids": ocr_block_ids,
+        "ocr_request_id": payload.ocr_request_id,
+        "notes": payload.notes,
+        "created_at": created_at,
+        "updated_at": created_at,
+    }
+
+    await db.field_provenance.insert_one(rec)
+    await _log_audit(tenant_id, "execution.field_provenance.create", {"entity_type": payload.entity_type, "entity_id": payload.entity_id, "field_key": payload.field_key})
+    return {"provenance": rec}
+
+
+@api_router.get("/execution/field-provenance")
+async def list_field_provenance(request: Request, entity_type: str, entity_id: str):
+    """List provenance records for an entity."""
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    recs = (
+        await db.field_provenance.find({"tenant_id": tenant_id, "entity_type": entity_type, "entity_id": entity_id}, {"_id": 0})
+        .sort("created_at", -1)
+        .to_list(500)
+    )
+    return {"provenance": recs}
+
+
+@api_router.delete("/execution/field-provenance/{provenance_id}")
+async def delete_field_provenance(provenance_id: str, request: Request):
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    await db.field_provenance.delete_one({"tenant_id": tenant_id, "id": provenance_id})
+    await _log_audit(tenant_id, "execution.field_provenance.delete", {"id": provenance_id})
+    return {"message": "Deleted"}
 
 
 @api_router.post("/execution/render-pdf-page")
@@ -670,6 +1255,104 @@ def _embed_mock(text: str, dim: int = 128) -> List[float]:
     return [v / norm for v in vec]
 
 
+# ==================== REPORTING PERIOD LOCKS (MVP) ====================
+
+class ReportingPeriodCreate(BaseModel):
+    period: str
+    label: Optional[str] = None
+
+
+async def _enforce_reporting_period_unlocked(tenant_id: str, period: str, action: str) -> None:
+    p = (period or "").strip()
+    if not p:
+        raise HTTPException(status_code=400, detail="period required")
+
+    await db.reporting_period_locks.create_index([("tenant_id", 1), ("period", 1)], unique=True)
+
+    lock = await db.reporting_period_locks.find_one({"tenant_id": tenant_id, "period": p}, {"_id": 0})
+    if lock and lock.get("status") == "locked":
+        raise HTTPException(status_code=423, detail=f"Reporting period '{p}' is locked; cannot {action}")
+
+
+@api_router.post("/execution/reporting-period-locks")
+async def create_reporting_period_lock(payload: ReportingPeriodCreate, request: Request):
+    """Create (or upsert) a reporting period lock record. Defaults to unlocked."""
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    period = (payload.period or "").strip()
+    if not period:
+        raise HTTPException(status_code=400, detail="period required")
+
+    await db.reporting_period_locks.create_index([("tenant_id", 1), ("period", 1)], unique=True)
+
+    now = datetime.now(timezone.utc).isoformat()
+    lock_id = _hash_id(tenant_id, "reporting_period", period)
+    rec = {
+        "id": lock_id,
+        "tenant_id": tenant_id,
+        "period": period,
+        "label": payload.label,
+        "status": "open",
+        "locked_at": None,
+        "locked_by": None,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    existing = await db.reporting_period_locks.find_one({"tenant_id": tenant_id, "period": period}, {"_id": 0})
+    if existing:
+        update: Dict[str, Any] = {"updated_at": now}
+        if payload.label is not None:
+            update["label"] = payload.label
+        await db.reporting_period_locks.update_one({"tenant_id": tenant_id, "period": period}, {"$set": update})
+        existing.update(update)
+        return {"lock": existing}
+
+    await db.reporting_period_locks.insert_one(rec)
+    await _log_audit(tenant_id, "execution.reporting_period_lock.create", {"period": period})
+    return {"lock": rec}
+
+
+@api_router.get("/execution/reporting-period-locks")
+async def list_reporting_period_locks(request: Request):
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    locks = (
+        await db.reporting_period_locks.find({"tenant_id": tenant_id}, {"_id": 0})
+        .sort([("period", 1)])
+        .to_list(500)
+    )
+    return {"locks": locks}
+
+
+@api_router.post("/execution/reporting-period-locks/{period}/lock")
+async def lock_reporting_period(period: str, request: Request):
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    p = (period or "").strip()
+    if not p:
+        raise HTTPException(status_code=400, detail="period required")
+
+    await db.reporting_period_locks.create_index([("tenant_id", 1), ("period", 1)], unique=True)
+
+    now = datetime.now(timezone.utc).isoformat()
+    lock_id = _hash_id(tenant_id, "reporting_period", p)
+    await db.reporting_period_locks.update_one(
+        {"tenant_id": tenant_id, "period": p},
+        {
+            "$setOnInsert": {"id": lock_id, "tenant_id": tenant_id, "period": p, "created_at": now},
+            "$set": {"status": "locked", "locked_at": now, "locked_by": tenant_id, "updated_at": now},
+        },
+        upsert=True,
+    )
+    lock = await db.reporting_period_locks.find_one({"tenant_id": tenant_id, "period": p}, {"_id": 0})
+    await _log_audit(tenant_id, "execution.reporting_period_lock.lock", {"period": p})
+    return {"lock": lock}
+
+
 
 @api_router.get("/pipeline/docs")
 async def list_disclosure_docs(request: Request):
@@ -682,6 +1365,135 @@ async def list_disclosure_docs(request: Request):
     for d in docs:
         d.pop("content", None)
     return {"docs": docs}
+
+
+@api_router.post("/pipeline/docs/upload")
+async def upload_disclosure_pdf(
+    request: Request,
+    file: UploadFile = File(...),
+    company_id: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    title: Optional[str] = Form(None),
+    period: str = "last_12_months",
+):
+    """Upload a PDF into disclosure_docs and store encrypted bytes on disk.
+
+    doc_id is stable: sha256(pdf_bytes).
+    """
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    await _enforce_reporting_period_unlocked(tenant_id, period, action="upload documents")
+
+    if not _get_doc_cipher():
+        raise HTTPException(status_code=500, detail="DOCSTORE_KEY not configured (required for encrypted upload)")
+
+    pdf_bytes = await file.read()
+    if not pdf_bytes:
+        raise HTTPException(status_code=400, detail="Empty upload")
+
+    if pdf_bytes[:4] != b"%PDF":
+        raise HTTPException(status_code=400, detail="Only PDF uploads are supported")
+
+    # Basic validation to fail fast on corrupt uploads
+    try:
+        PdfReader(BytesIO(pdf_bytes))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid PDF")
+
+    sha = hashlib.sha256(pdf_bytes).hexdigest()
+    doc_id = sha
+    size_bytes = int(len(pdf_bytes))
+
+    await db.disclosure_docs.create_index([("tenant_id", 1), ("doc_id", 1)])
+
+    now = datetime.now(timezone.utc).isoformat()
+    existing = await db.disclosure_docs.find_one({"tenant_id": tenant_id, "doc_id": doc_id}, {"_id": 0})
+    uploaded_at = (existing or {}).get("uploaded_at") or now
+    created_at = (existing or {}).get("created_at") or now
+
+    local_path = _disclosure_doc_local_path(tenant_id, doc_id)
+    local_path.write_bytes(_encrypt_bytes(pdf_bytes))
+
+    doc = {
+        "doc_id": doc_id,
+        "tenant_id": tenant_id,
+        "company_id": company_id,
+        "category": category,
+        "title": title or file.filename or "Uploaded PDF",
+        "filename": file.filename,
+        "size_bytes": size_bytes,
+        "content_type": "pdf",
+        "sha256": sha,
+        "local_path": str(local_path),
+        "source": "upload",
+        "uploaded_at": uploaded_at,
+        "created_at": created_at,
+        "updated_at": now,
+    }
+
+    await db.disclosure_docs.replace_one(
+        {"tenant_id": tenant_id, "doc_id": doc_id},
+        doc,
+        upsert=True,
+    )
+
+    await _log_audit(tenant_id, "pipeline.docs.upload", {"doc_id": doc_id, "size_bytes": size_bytes})
+    return {"doc": {k: v for k, v in doc.items() if k != "local_path"}}
+
+
+@api_router.delete("/pipeline/docs/{doc_id}")
+async def delete_uploaded_disclosure_doc(doc_id: str, request: Request, period: str = "last_12_months"):
+    """Delete an uploaded disclosure doc (source='upload') and its stored bytes."""
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    await _enforce_reporting_period_unlocked(tenant_id, period, action="delete documents")
+
+    doc = await db.disclosure_docs.find_one({"tenant_id": tenant_id, "doc_id": doc_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    if doc.get("source") != "upload":
+        raise HTTPException(status_code=400, detail="Only uploaded documents can be deleted via this endpoint")
+
+    # Remove stored encrypted PDF bytes
+    local_path = doc.get("local_path")
+    if local_path:
+        try:
+            p = Path(local_path)
+            if p.exists():
+                p.unlink()
+        except Exception:
+            pass
+
+    # Best-effort cleanup of derived artifacts
+    try:
+        pages = await db.document_pages.find({"tenant_id": tenant_id, "doc_id": doc_id}, {"_id": 0, "local_path": 1}).to_list(5000)
+        for pg in pages:
+            lp = pg.get("local_path")
+            if not lp:
+                continue
+            try:
+                pp = Path(lp)
+                if pp.exists():
+                    pp.unlink()
+            except Exception:
+                pass
+        await db.document_pages.delete_many({"tenant_id": tenant_id, "doc_id": doc_id})
+    except Exception:
+        pass
+
+    try:
+        await db.ocr_blocks.delete_many({"tenant_id": tenant_id, "doc_id": doc_id})
+        await db.ocr_runs.delete_many({"tenant_id": tenant_id, "doc_id": doc_id})
+        await db.field_provenance.delete_many({"tenant_id": tenant_id, "doc_id": doc_id})
+    except Exception:
+        pass
+
+    await db.disclosure_docs.delete_one({"tenant_id": tenant_id, "doc_id": doc_id})
+    await _log_audit(tenant_id, "pipeline.docs.delete", {"doc_id": doc_id})
+    return {"message": "Deleted", "doc_id": doc_id}
 
 
 def _cosine(a: List[float], b: List[float]) -> float:
@@ -713,10 +1525,12 @@ class DisclosureSourceRegister(BaseModel):
 
 
 @api_router.post("/pipeline/sources/register")
-async def register_disclosure_sources(payload: List[DisclosureSourceRegister], request: Request):
+async def register_disclosure_sources(payload: List[DisclosureSourceRegister], request: Request, period: str = "last_12_months"):
     """Register disclosure sources (PDF URLs only for this phase)."""
     user = await get_user_from_request(request)
     tenant_id = user["user_id"]
+
+    await _enforce_reporting_period_unlocked(tenant_id, period, action="register disclosure sources")
 
     for s in payload:
         if not _is_pdf_url(s.url):
@@ -767,7 +1581,7 @@ async def _vector_search(tenant_id: str, company_id: str, category: str, query: 
 
 
 @api_router.post("/pipeline/sources/seed")
-async def seed_disclosure_sources(request: Request):
+async def seed_disclosure_sources(request: Request, period: str = "last_12_months"):
     """Seed realistic disclosure sources + reports for peers (MVP).
 
     Creates:
@@ -778,6 +1592,8 @@ async def seed_disclosure_sources(request: Request):
     """
     user = await get_user_from_request(request)
     tenant_id = user["user_id"]
+
+    await _enforce_reporting_period_unlocked(tenant_id, period, action="seed disclosure sources")
 
     await db.disclosure_sources.delete_many({"tenant_id": tenant_id})
     await db.disclosure_docs.delete_many({"tenant_id": tenant_id})
@@ -890,13 +1706,15 @@ def _pdf_pages_to_text(pdf_bytes: bytes) -> List[Tuple[int, str]]:
 
 
 @api_router.post("/pipeline/download")
-async def download_disclosures(request: Request):
+async def download_disclosures(request: Request, period: str = "last_12_months"):
     """Download all registered PDF sources for the tenant into uploaded_reports/.
 
     Stores encrypted bytes on disk if DOCSTORE_KEY is configured.
     """
     user = await get_user_from_request(request)
     tenant_id = user["user_id"]
+
+    await _enforce_reporting_period_unlocked(tenant_id, period, action="download disclosures")
 
     await _rate_limit_persistent(tenant_id, action="pipeline_download", limit=3, window_seconds=60)
 
@@ -950,7 +1768,7 @@ async def download_disclosures(request: Request):
 
 
 @api_router.post("/pipeline/ingest")
-async def ingest_disclosures(request: Request):
+async def ingest_disclosures(request: Request, period: str = "last_12_months"):
     """Ingestion: reads disclosure_sources and produces chunk + embedding records.
 
     Supports:
@@ -959,6 +1777,8 @@ async def ingest_disclosures(request: Request):
     """
     user = await get_user_from_request(request)
     tenant_id = user["user_id"]
+
+    await _enforce_reporting_period_unlocked(tenant_id, period, action="ingest disclosures")
 
     await _rate_limit_persistent(tenant_id, action="pipeline_ingest", limit=6, window_seconds=60)
 
@@ -1031,10 +1851,12 @@ async def ingest_disclosures(request: Request):
 
 
 @api_router.post("/pipeline/generate")
-async def generate_recommendations_batch(request: Request):
+async def generate_recommendations_batch(request: Request, period: str = "last_12_months"):
     """MVP generation: for each benchmark, retrieve chunks and generate cached recommendations."""
     user = await get_user_from_request(request)
     tenant_id = user["user_id"]
+
+    await _enforce_reporting_period_unlocked(tenant_id, period, action="generate recommendations")
 
     await _rate_limit_persistent(tenant_id, action="pipeline_generate", limit=4, window_seconds=60)
 
@@ -1214,10 +2036,17 @@ async def generate_ai_recommendation(
 ) -> dict:
     """LLM Generation step (MOCK RAG): strictly extract actions from provided context."""
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
         import json
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+    except Exception:
+        # Deterministic fallback: do not error-spam when optional LLM deps are absent.
+        logger.info("LLM generation skipped (optional emergentintegrations not installed).")
+        return build_generic_recommendation_template(benchmark, "insufficient_context")
 
-        api_key = os.environ.get("EMERGENT_LLM_KEY")
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        logger.info("LLM generation skipped (EMERGENT_LLM_KEY not set).")
+        return build_generic_recommendation_template(benchmark, "insufficient_context")
 
         system_prompt = """You are an expert Supply Chain Sustainability Analyst and Legal Contract Strategist.
 
@@ -1242,11 +2071,14 @@ Return ONLY valid JSON:
 }
 """
 
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=f"action_extractor_{benchmark['id']}",
-            system_message=system_prompt,
-        ).with_model("gemini", "gemini-3-flash-preview")
+    try:
+        chat = (
+            LlmChat(
+                api_key=api_key,
+                session_id=f"action_extractor_{benchmark['id']}",
+                system_message=system_prompt,
+            ).with_model("gemini", "gemini-3-flash-preview")
+        )
 
         prompt = f"""Peer Name: {benchmark['peer_name']}
 Supplier Name: {benchmark['supplier_name']}
@@ -1283,9 +2115,8 @@ Context:
             "evidence_status": evidence_status,
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
-
     except Exception as e:
-        logger.error(f"AI generation error: {e}")
+        logger.warning(f"LLM generation failed; falling back to generic template: {e}")
         return build_generic_recommendation_template(benchmark, "insufficient_context")
 
 
@@ -1815,6 +2646,445 @@ def _quality_for_record(record: dict) -> str:
     return "medium"
 
 
+# ==================== EPIC I (Agent I): ANOMALY ENGINE + FIX QUEUE (MVP) ====================
+
+ANOMALY_SEVERITIES = {"low", "medium", "high"}
+ANOMALY_STATUSES = {"open", "ignored", "resolved"}
+
+
+def _anomaly_id(tenant_id: str, rule_id: str, subject_type: str, subject_id: str) -> str:
+    return _hash_id(tenant_id, "anomaly", rule_id, subject_type, subject_id)
+
+
+async def _upsert_anomaly(rec: Dict[str, Any]) -> None:
+    await db.anomalies.create_index([("tenant_id", 1), ("status", 1), ("severity", 1), ("created_at", -1)])
+    await db.anomalies.create_index([("tenant_id", 1), ("rule_id", 1), ("subject_type", 1), ("subject_id", 1)])
+
+    now = datetime.now(timezone.utc).isoformat()
+    existing = await db.anomalies.find_one({"tenant_id": rec["tenant_id"], "id": rec["id"]}, {"_id": 0, "status": 1, "resolution_note": 1, "created_at": 1})
+    if existing:
+        rec.setdefault("created_at", existing.get("created_at") or now)
+        if existing.get("status") in {"ignored", "resolved"}:
+            rec["status"] = existing["status"]
+            if existing.get("resolution_note") and rec.get("resolution_note") is None:
+                rec["resolution_note"] = existing.get("resolution_note")
+    else:
+        rec.setdefault("created_at", now)
+    rec["updated_at"] = now
+    await db.anomalies.replace_one({"tenant_id": rec["tenant_id"], "id": rec["id"]}, rec, upsert=True)
+
+
+async def _run_anomaly_rules_for_tenant(tenant_id: str) -> int:
+    """Deterministic quality checks only (no LLM). Returns number of anomalies upserted."""
+    created = 0
+
+    benchmarks = await db.supplier_benchmarks.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(2000)
+    recs = await db.recommendation_content.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(3000)
+    rec_by_benchmark = {r.get("benchmark_id"): r for r in recs if r.get("benchmark_id")}
+    prov_recs = await db.field_provenance.find({"tenant_id": tenant_id, "entity_type": "supplier_benchmark"}, {"_id": 0, "entity_id": 1, "field_key": 1}).to_list(5000)
+    prov_keys = {(p.get("entity_id"), p.get("field_key")) for p in (prov_recs or []) if p.get("entity_id") and p.get("field_key")}
+
+    HIGH_IMPACT_MIN_PCT = 1.0
+    REQUIRED_PROVENANCE_FIELDS: List[Tuple[str, str]] = [
+        ("upstream_impact_pct", "Upstream impact (%)"),
+        ("potential_reduction_pct", "Potential reduction (%)"),
+        ("supplier_intensity", "Supplier intensity"),
+        ("peer_intensity", "Peer intensity"),
+        ("upstream_spend_usd_m", "Upstream spend (USD M)"),
+    ]
+
+    # Rule 1: zero/near-zero spend (data gap)
+    for b in benchmarks:
+        spend = float(b.get("upstream_spend_usd_m", 0.0) or 0.0)
+        if spend > 0:
+            continue
+        anomaly = {
+            "id": _anomaly_id(tenant_id, "benchmark.zero_spend", "supplier_benchmark", b["id"]),
+            "tenant_id": tenant_id,
+            "rule_id": "benchmark.zero_spend",
+            "severity": "medium",
+            "status": "open",
+            "subject_type": "supplier_benchmark",
+            "subject_id": b["id"],
+            "subject_label": b.get("supplier_name"),
+            "message": "Supplier benchmark has zero upstream spend; validate inputs or exclude from prioritization.",
+            "details": {"supplier_id": b.get("supplier_id"), "category": b.get("category"), "upstream_spend_usd_m": spend},
+            "fix_hint": "Add missing spend lines or activity allocation; otherwise mark ignored.",
+        }
+        await _upsert_anomaly(anomaly)
+        created += 1
+
+    # Rule 2b: missing field-level provenance for high-impact suppliers/fields
+    for b in benchmarks:
+        impact = float(b.get("upstream_impact_pct", 0.0) or 0.0)
+        if impact < HIGH_IMPACT_MIN_PCT:
+            continue
+
+        severity = "high" if impact >= 2.0 else "medium"
+        for field_key, field_label in REQUIRED_PROVENANCE_FIELDS:
+            if b.get(field_key) is None:
+                continue
+            if (b.get("id"), field_key) in prov_keys:
+                continue
+            anomaly = {
+                "id": _anomaly_id(tenant_id, f"provenance.missing.{field_key}", "supplier_benchmark_field", f"{b['id']}:{field_key}"),
+                "tenant_id": tenant_id,
+                "rule_id": f"provenance.missing.{field_key}",
+                "severity": severity,
+                "status": "open",
+                "subject_type": "supplier_benchmark_field",
+                "subject_id": f"{b['id']}:{field_key}",
+                "subject_label": f"{b.get('supplier_name')} · {field_label}",
+                "message": "High-impact benchmark field is missing evidence provenance.",
+                "details": {
+                    "entity_type": "supplier_benchmark",
+                    "entity_id": b.get("id"),
+                    "field_key": field_key,
+                    "field_label": field_label,
+                    "field_value": b.get(field_key),
+                    "supplier_id": b.get("supplier_id"),
+                    "category": b.get("category"),
+                    "upstream_impact_pct": impact,
+                },
+                "fix_hint": "Open Evidence → Field provenance: select the supporting doc/page/block(s) and attach provenance to this field.",
+            }
+            await _upsert_anomaly(anomaly)
+            created += 1
+
+    # Rule 2: leader/no better peer (peer == supplier)
+    for b in benchmarks:
+        if (b.get("peer_id") or "") != (b.get("supplier_id") or ""):
+            continue
+        anomaly = {
+            "id": _anomaly_id(tenant_id, "benchmark.peer_same_as_supplier", "supplier_benchmark", b["id"]),
+            "tenant_id": tenant_id,
+            "rule_id": "benchmark.peer_same_as_supplier",
+            "severity": "low",
+            "status": "open",
+            "subject_type": "supplier_benchmark",
+            "subject_id": b["id"],
+            "subject_label": b.get("supplier_name"),
+            "message": "No better peer match found (peer equals supplier).",
+            "details": {"supplier_id": b.get("supplier_id"), "peer_id": b.get("peer_id"), "category": b.get("category")},
+            "fix_hint": "Broaden peer matching constraints or mark as leader.",
+        }
+        await _upsert_anomaly(anomaly)
+        created += 1
+
+    # Rule 3: insufficient evidence for action plan
+    for b in benchmarks:
+        rec = rec_by_benchmark.get(b.get("id"))
+        if not rec:
+            continue
+        evidence_status = rec.get("evidence_status", "ok")
+        if evidence_status == "ok":
+            continue
+        impact = float(b.get("upstream_impact_pct", 0.0) or 0.0)
+        severity = "high" if impact >= 1.0 else "medium"
+        anomaly = {
+            "id": _anomaly_id(tenant_id, "evidence.insufficient_context", "supplier_benchmark", b["id"]),
+            "tenant_id": tenant_id,
+            "rule_id": "evidence.insufficient_context",
+            "severity": severity,
+            "status": "open",
+            "subject_type": "supplier_benchmark",
+            "subject_id": b["id"],
+            "subject_label": b.get("supplier_name"),
+            "message": "Recommendation lacks peer-validated technical actions due to insufficient evidence context.",
+            "details": {"evidence_status": evidence_status, "category": b.get("category"), "upstream_impact_pct": impact},
+            "fix_hint": "Collect a primary supplier doc or add peer disclosures, then re-run ingestion/generation.",
+        }
+        await _upsert_anomaly(anomaly)
+        created += 1
+
+    # Rule 4: https sources registered but not downloaded
+    sources = await db.disclosure_sources.find({"tenant_id": tenant_id, "url": {"$regex": r"^https://"}}, {"_id": 0}).to_list(2000)
+    if sources:
+        docs_by_url = {
+            d.get("url"): d
+            for d in await db.disclosure_docs.find({"tenant_id": tenant_id}, {"_id": 0, "url": 1}).to_list(3000)
+            if d.get("url")
+        }
+        for s in sources:
+            url = s.get("url")
+            if not url:
+                continue
+            if url in docs_by_url:
+                continue
+            anomaly = {
+                "id": _anomaly_id(tenant_id, "pipeline.source_not_downloaded", "disclosure_source", s["id"]),
+                "tenant_id": tenant_id,
+                "rule_id": "pipeline.source_not_downloaded",
+                "severity": "medium",
+                "status": "open",
+                "subject_type": "disclosure_source",
+                "subject_id": s["id"],
+                "subject_label": s.get("title") or url,
+                "message": "Registered PDF source has not been downloaded into disclosure_docs.",
+                "details": {"url": url, "company_id": s.get("company_id"), "category": s.get("category")},
+                "fix_hint": "Run the download job for registered https sources.",
+            }
+            await _upsert_anomaly(anomaly)
+            created += 1
+
+    return created
+
+
+class AnomalyStatusUpdate(BaseModel):
+    status: str
+    resolution_note: Optional[str] = None
+
+
+@api_router.post("/quality/anomalies/run")
+async def run_anomalies(request: Request):
+    """Run deterministic anomaly rules and upsert into anomalies collection."""
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    await _rate_limit_persistent(tenant_id, action="quality_anomalies_run", limit=4, window_seconds=60)
+
+    count = await _run_anomaly_rules_for_tenant(tenant_id)
+    await _log_audit(tenant_id, "quality.anomalies.run", {"upserted": count})
+    return {"message": "Anomaly scan complete", "upserted": count}
+
+
+@api_router.get("/quality/anomalies")
+async def list_anomalies(request: Request, status: Optional[str] = None, severity: Optional[str] = None, limit: int = 200):
+    """List anomalies for the current tenant."""
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    q: Dict[str, Any] = {"tenant_id": tenant_id}
+    if status:
+        q["status"] = status
+    if severity:
+        q["severity"] = severity
+
+    anomalies = (
+        await db.anomalies.find(q, {"_id": 0})
+        .sort("updated_at", -1)
+        .to_list(min(int(limit or 200), 1000))
+    )
+    return {"anomalies": anomalies}
+
+
+@api_router.post("/quality/anomalies/{anomaly_id}/status")
+async def update_anomaly_status(anomaly_id: str, payload: AnomalyStatusUpdate, request: Request):
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    if payload.status not in ANOMALY_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Allowed: {sorted(ANOMALY_STATUSES)}")
+
+    now = datetime.now(timezone.utc).isoformat()
+    update = {"status": payload.status, "updated_at": now}
+    if payload.resolution_note is not None:
+        update["resolution_note"] = payload.resolution_note
+
+    res = await db.anomalies.update_one({"tenant_id": tenant_id, "id": anomaly_id}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Anomaly not found")
+
+    await _log_audit(tenant_id, "quality.anomalies.status", {"id": anomaly_id, "status": payload.status})
+    return {"message": "Updated"}
+
+
+# ==================== INTEGRATIONS (CLIENT HARDCODED DEMO FLOWS) ====================
+
+INTEGRATION_STATUSES = {"not_connected", "connected", "error"}
+
+
+class IntegrationStateUpsert(BaseModel):
+    connector_id: str
+    status: str = "connected"
+    display_name: Optional[str] = None
+    config_summary: Optional[Dict[str, Any]] = None
+
+
+@api_router.get("/integrations/catalog")
+async def integrations_catalog(request: Request):
+    """Return the demo integrations catalog (used by the frontend Integrations page)."""
+    await get_user_from_request(request)
+    return {"connectors": INTEGRATIONS_CATALOG}
+
+
+@api_router.get("/integrations/state")
+async def get_integrations_state(request: Request):
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    await db.integrations_state.create_index([("tenant_id", 1), ("connector_id", 1)])
+    rows = await db.integrations_state.find({"tenant_id": tenant_id}, {"_id": 0}).to_list(200)
+    return {"state": rows}
+
+
+@api_router.post("/integrations/state")
+async def upsert_integration_state(payload: IntegrationStateUpsert, request: Request):
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    if payload.status not in INTEGRATION_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Allowed: {sorted(INTEGRATION_STATUSES)}")
+
+    await db.integrations_state.create_index([("tenant_id", 1), ("connector_id", 1)])
+
+    now = datetime.now(timezone.utc).isoformat()
+    existing = await db.integrations_state.find_one({"tenant_id": tenant_id, "connector_id": payload.connector_id}, {"_id": 0})
+    created_at = (existing or {}).get("created_at") or now
+
+    rec = {
+        "id": _hash_id(tenant_id, "integration", payload.connector_id),
+        "tenant_id": tenant_id,
+        "connector_id": payload.connector_id,
+        "display_name": payload.display_name,
+        "status": payload.status,
+        "config_summary": payload.config_summary or (existing or {}).get("config_summary") or {},
+        "created_at": created_at,
+        "updated_at": now,
+        "last_sync_at": (existing or {}).get("last_sync_at"),
+    }
+
+    await db.integrations_state.replace_one({"tenant_id": tenant_id, "connector_id": payload.connector_id}, rec, upsert=True)
+    await _log_audit(tenant_id, "integrations.state.upsert", {"connector_id": payload.connector_id, "status": payload.status})
+    return {"state": rec}
+
+
+async def _ensure_measure_factors() -> None:
+    """Upsert the minimal factor library required for Measure demo sync."""
+    factors = [
+        {
+            "id": "ef_spend_purchased_goods_us_2024_v1",
+            "method": "spend",
+            "category": "Purchased Goods & Services",
+            "region": "US",
+            "year": 2024,
+            "unit": "kgCO2e_per_usd",
+            "value": 0.32,
+            "source": "EPA / DEFRA blend (illustrative)",
+            "version": "v1",
+        },
+        {
+            "id": "ef_activity_freight_tkm_us_2024_v1",
+            "method": "activity",
+            "category": "Transport & Distribution",
+            "region": "US",
+            "year": 2024,
+            "unit": "kgCO2e_per_tonne_km",
+            "value": 0.062,
+            "source": "GLEC Framework (illustrative)",
+            "version": "v1",
+        },
+        {
+            "id": "ef_activity_electricity_kwh_us_2024_v1",
+            "method": "activity",
+            "category": "Fuel & Energy Activities",
+            "region": "US",
+            "year": 2024,
+            "unit": "kgCO2e_per_kwh",
+            "value": 0.38,
+            "source": "US eGRID (illustrative)",
+            "version": "v1",
+        },
+    ]
+    for f in factors:
+        await db.measure_emission_factors.replace_one({"id": f["id"]}, f, upsert=True)
+
+
+def _demo_integration_measure_rows(tenant_id: str, connector_id: str, period: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Deterministically generate a small set of Measure purchase + activity rows."""
+    # Keep numeric outputs deterministic and bounded. No randomness.
+    # Align supplier ids used elsewhere in the demo ({company}_001).
+    purchases = [
+        ("ppg_001", "PPG Industries", "Purchased Goods & Services", 260_000_000),
+        ("intl_paper_001", "International Paper", "Purchased Goods & Services", 58_000_000),
+        ("holcim_001", "Holcim Ltd", "Purchased Goods & Services", 44_000_000),
+        ("ups_001", "UPS Logistics", "Transport & Distribution", 92_000_000),
+        ("dow_001", "Dow Inc", "Fuel & Energy Activities", 75_000_000),
+    ]
+
+    activities = [
+        ("ups_001", "UPS Logistics", "Transport & Distribution", "freight", "tonne_km", 620_000_000),
+        ("dow_001", "Dow Inc", "Fuel & Energy Activities", "electricity", "kwh", 820_000_000),
+    ]
+
+    start, end = _period_bounds(period)
+    base_date = start + timedelta(days=30)
+    date_str = base_date.date().isoformat()
+
+    purchase_rows: List[Dict[str, Any]] = []
+    for idx, (sid, name, category, amount) in enumerate(purchases, start=1):
+        purchase_rows.append(
+            {
+                "id": _hash_id(tenant_id, "integration", connector_id, "purchase", period, str(idx), sid),
+                "user_id": tenant_id,
+                "supplier_id": sid,
+                "supplier_name": name,
+                "category": category,
+                "date": date_str,
+                "amount_usd": amount,
+                "region": "US",
+                "source": f"integration:{connector_id}",
+                "period": period,
+            }
+        )
+
+    activity_rows: List[Dict[str, Any]] = []
+    for idx, (sid, name, category, activity_type, unit, qty) in enumerate(activities, start=1):
+        activity_rows.append(
+            {
+                "id": _hash_id(tenant_id, "integration", connector_id, "activity", period, str(idx), sid),
+                "user_id": tenant_id,
+                "supplier_id": sid,
+                "supplier_name": name,
+                "category": category,
+                "date": date_str,
+                "activity_type": activity_type,
+                "unit": unit,
+                "quantity": qty,
+                "region": "US",
+                "source": f"integration:{connector_id}",
+                "period": period,
+            }
+        )
+
+    return purchase_rows, activity_rows
+
+
+@api_router.post("/integrations/{connector_id}/demo-sync")
+async def integrations_demo_sync(connector_id: str, request: Request, period: str = "last_12_months"):
+    """Demo-only: seed deterministic Measure inputs as if synced from an integration.
+
+    This is designed for vendor outreach demos and is intentionally lightweight.
+    """
+    user = await get_user_from_request(request)
+    tenant_id = user["user_id"]
+
+    await _enforce_reporting_period_unlocked(tenant_id, period, action=f"demo sync integration {connector_id}")
+    await _ensure_measure_factors()
+
+    # Upsert purchases/activities to avoid duplicates across repeated demo syncs.
+    purchase_rows, activity_rows = _demo_integration_measure_rows(tenant_id, connector_id, period)
+
+    await db.measure_purchases.create_index([("user_id", 1), ("id", 1)])
+    await db.measure_activity.create_index([("user_id", 1), ("id", 1)])
+
+    for r in purchase_rows:
+        await db.measure_purchases.replace_one({"user_id": tenant_id, "id": r["id"]}, r, upsert=True)
+    for r in activity_rows:
+        await db.measure_activity.replace_one({"user_id": tenant_id, "id": r["id"]}, r, upsert=True)
+
+    now = datetime.now(timezone.utc).isoformat()
+    await db.integrations_state.create_index([("tenant_id", 1), ("connector_id", 1)])
+    await db.integrations_state.update_one(
+        {"tenant_id": tenant_id, "connector_id": connector_id},
+        {"$set": {"last_sync_at": now, "updated_at": now, "status": "connected"}},
+        upsert=True,
+    )
+
+    await _log_audit(tenant_id, "integrations.demo_sync", {"connector_id": connector_id, "period": period, "purchases": len(purchase_rows), "activities": len(activity_rows)})
+    return {"message": "Demo sync complete", "connector_id": connector_id, "period": period, "counts": {"purchases": len(purchase_rows), "activities": len(activity_rows)}}
+
+
 # ==================== EPIC I: ADMIN ENDPOINTS (MVP) ====================
 
 @api_router.get("/admin/audit")
@@ -1881,7 +3151,7 @@ async def startup_scheduler():
 
 
 @api_router.post("/measure/seed")
-async def seed_measure_data(request: Request):
+async def seed_measure_data(request: Request, period: str = "last_12_months"):
     """Seed realistic Measure inputs: purchases + activity + emission factors.
 
     This is an audit-friendly mock:
@@ -1893,6 +3163,8 @@ async def seed_measure_data(request: Request):
 
     user = await get_user_from_request(request)
     user_id = user["user_id"]
+
+    await _enforce_reporting_period_unlocked(user_id, period, action="seed measure data")
 
     await db.measure_purchases.delete_many({"user_id": user_id})
     await db.measure_activity.delete_many({"user_id": user_id})
@@ -2218,9 +3490,19 @@ async def _compute_inventory(period: str, user_id: str = "_global_demo") -> Dict
         "period": period,
         "total_upstream_tco2e": total,
         "coverage_pct": round(coverage, 1),
-        "category_breakdown": [{"category": k, "tco2e": round(v, 2)} for k, v in sorted(by_category.items(), key=lambda x: x[1], reverse=True)],
+        "category_breakdown": [
+            {
+                "entity_type": "measure_category",
+                "entity_id": _measure_entity_id(user_id, period, "category", k),
+                "category": k,
+                "tco2e": round(v, 2),
+            }
+            for k, v in sorted(by_category.items(), key=lambda x: x[1], reverse=True)
+        ],
         "top_suppliers": [
             {
+                "entity_type": "measure_supplier",
+                "entity_id": _measure_entity_id(user_id, period, "supplier", s["supplier_id"]),
                 "supplier_id": s["supplier_id"],
                 "supplier_name": s["supplier_name"],
                 "tco2e": round(s["tco2e"], 2),
@@ -2251,8 +3533,31 @@ async def measure_suppliers(request: Request, period: str = "last_12_months"):
     return {"period": inv["period"], "top_suppliers": inv["top_suppliers"], "coverage_pct": inv["coverage_pct"]}
 
 
+async def _seed_engagement_records(tenant_id: str, benchmarks: list):
+    """Pre-seed engagement records so the Engage table is populated on first load."""
+    if not benchmarks:
+        return
+    statuses = ["not_started", "in_progress", "pending_response", "completed", "not_started"]
+    now = datetime.now(timezone.utc).isoformat()
+    docs = []
+    for i, b in enumerate(benchmarks):
+        status = statuses[i % len(statuses)]
+        docs.append({
+            "user_id": tenant_id,
+            "supplier_id": b["id"],
+            "status": status,
+            "notes": None,
+            "next_action_date": None,
+            "created_at": now,
+            "updated_at": now,
+            "history": [{"status": status, "notes": None, "timestamp": now}],
+        })
+    await db.supplier_engagements.delete_many({"user_id": tenant_id})
+    await db.supplier_engagements.insert_many(docs)
+
+
 @api_router.post("/seed-data")
-async def seed_mock_data(request: Request):
+async def seed_mock_data(request: Request, period: str = "last_12_months"):
     """Seed the database with realistic mock benchmarks + disclosure chunks.
 
     NOTE: This is a MOCK precomputed pipeline. In production this would be generated by batch jobs.
@@ -2267,8 +3572,12 @@ async def seed_mock_data(request: Request):
     user = await get_user_from_request(request)
     tenant_id = user["user_id"]
 
+    await _enforce_reporting_period_unlocked(tenant_id, period, action="seed pipeline data")
+
     await db.supplier_benchmarks.delete_many({"tenant_id": tenant_id})
     await db.recommendation_content.delete_many({"tenant_id": tenant_id})
+    await db.supplier_engagements.delete_many({"user_id": tenant_id})
+    await db.anomalies.delete_many({"tenant_id": tenant_id})
 
     # disclosure_chunks are treated as public/peer evidence and are global in this demo.
     if await db.disclosure_chunks.estimated_document_count() == 0:
@@ -2448,6 +3757,9 @@ async def seed_mock_data(request: Request):
     if benchmarks:
         await db.supplier_benchmarks.insert_many(benchmarks)
 
+    # ---- Seed engagement records for each benchmark supplier ----
+    await _seed_engagement_records(tenant_id, benchmarks)
+
     # Evidence chunks per peer + category (simulates scraping/summarizing PDF reports)
     chunks = [
         {
@@ -2519,17 +3831,22 @@ async def seed_mock_data(request: Request):
     if await db.disclosure_chunks.estimated_document_count() == 0:
         await db.disclosure_chunks.insert_many(chunks)
 
-    return {"message": "Mock data seeded successfully", "count": len(benchmarks), "note": "Includes edge cases (leader + zero spend) which are excluded by default views."}
+    # Re-generate anomalies for the freshly seeded benchmarks
+    anomaly_count = await _run_anomaly_rules_for_tenant(tenant_id)
+
+    return {"message": "Mock data seeded successfully", "count": len(benchmarks), "engagements": len(benchmarks), "anomalies": anomaly_count, "note": "Includes edge cases (leader + zero spend) which are excluded by default views. Engagement records seeded for all suppliers."}
 
 
 @api_router.post("/pipeline/run")
-async def run_mock_pipeline(request: Request):
+async def run_mock_pipeline(request: Request, period: str = "last_12_months"):
     """Pipeline trigger (demo): seeds baseline + benchmarks and generates cached recommendations.
 
     Simulates the nightly batch pipeline described in the tech spec.
     """
     user = await get_user_from_request(request)
     tenant_id = user["user_id"]
+
+    await _enforce_reporting_period_unlocked(tenant_id, period, action="run pipeline")
 
     await db.pipeline_runs.create_index([("tenant_id", 1), ("started_at", -1)])
 
@@ -2543,11 +3860,11 @@ async def run_mock_pipeline(request: Request):
     })
 
     try:
-        await seed_measure_data(request)
-        await seed_disclosure_sources(request)
-        await ingest_disclosures(request)
-        await seed_mock_data(request)
-        await generate_recommendations_batch(request)
+        await seed_measure_data(request, period=period)
+        await seed_disclosure_sources(request, period=period)
+        await ingest_disclosures(request, period=period)
+        await seed_mock_data(request, period=period)
+        await generate_recommendations_batch(request, period=period)
 
         finished_at = datetime.now(timezone.utc).isoformat()
         await db.pipeline_runs.update_one(
@@ -2595,6 +3912,57 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def _maybe_mount_frontend() -> None:
+    """Serve a built frontend (CRA) from the backend origin for local demos.
+
+    Enable by setting SERVE_FRONTEND_DIR to the CRA build directory (e.g. ../frontend/build).
+    """
+    build_dir = os.environ.get("SERVE_FRONTEND_DIR")
+    if not build_dir:
+        return
+
+    build_path = Path(build_dir).expanduser().resolve()
+    index_path = build_path / "index.html"
+    if not index_path.exists():
+        logger.warning(f"SERVE_FRONTEND_DIR set but index.html not found: {index_path}")
+        return
+
+    def _safe_static_path(full_path: str) -> Optional[Path]:
+        # Reject traversal and weird paths.
+        if not full_path or full_path.startswith("/"):
+            return None
+        if "\x00" in full_path:
+            return None
+        try:
+            p = (build_path / full_path).resolve()
+        except Exception:
+            return None
+        if build_path not in p.parents and p != build_path:
+            return None
+        if not p.is_file():
+            return None
+        return p
+
+    @app.get("/", include_in_schema=False)
+    async def spa_root():
+        return FileResponse(str(index_path))
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_router(full_path: str):
+        # Let API routes 404 normally (so missing endpoints are obvious).
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not found")
+
+        static_path = _safe_static_path(full_path)
+        if static_path is not None:
+            return FileResponse(str(static_path))
+
+        # SPA fallback for client-side routing (e.g. /dashboard)
+        return FileResponse(str(index_path))
+
+
+_maybe_mount_frontend()
 
 
 @app.on_event("shutdown")

@@ -8,11 +8,11 @@ import EngagePage from "@/pages/EngagePage";
 import MeasurePage from "@/pages/MeasurePage";
 import ReportPage from "@/pages/ReportPage";
 import EvidencePage from "@/pages/EvidencePage";
+import QualityPage from "@/pages/QualityPage";
+import IntegrationsPage from "@/pages/IntegrationsPage";
 
 import { useAuth } from "@/App";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { apiUrl } from "@/lib/api";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -26,13 +26,15 @@ export default function Dashboard() {
     if (path.startsWith("/dashboard/engage")) return "engage";
     if (path.startsWith("/dashboard/measure")) return "measure";
     if (path.startsWith("/dashboard/report")) return "report";
+    if (path.startsWith("/dashboard/integrations")) return "integrations";
     if (path.startsWith("/dashboard/evidence")) return "evidence";
+    if (path.startsWith("/dashboard/quality")) return "quality";
     return "reduce";
   }, [location.pathname]);
 
   const handleLogout = async () => {
     try {
-      await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
+      await axios.post(apiUrl("/auth/logout"), {}, { withCredentials: true });
       navigate("/", { replace: true });
     } catch {
       navigate("/", { replace: true });
@@ -43,7 +45,9 @@ export default function Dashboard() {
     if (activeModule === "measure") return <MeasurePage />;
     if (activeModule === "engage") return <EngagePage focusSupplierId={engageFocusSupplierId} />;
     if (activeModule === "report") return <ReportPage />;
+    if (activeModule === "integrations") return <IntegrationsPage />;
     if (activeModule === "evidence") return <EvidencePage />;
+    if (activeModule === "quality") return <QualityPage />;
 
     return (
       <ReduceDashboard
@@ -66,7 +70,9 @@ export default function Dashboard() {
           if (key === "measure") navigate("/dashboard/measure");
           else if (key === "engage") navigate("/dashboard/engage");
           else if (key === "report") navigate("/dashboard/report");
+          else if (key === "integrations") navigate("/dashboard/integrations");
           else if (key === "evidence") navigate("/dashboard/evidence");
+          else if (key === "quality") navigate("/dashboard/quality");
           else navigate("/dashboard");
         }}
       />

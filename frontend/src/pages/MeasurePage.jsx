@@ -1,5 +1,6 @@
 import { BarChart3 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -12,9 +13,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { apiUrl } from "@/lib/api";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+const API = apiUrl();
 
 const uncertaintyColor = {
   low: "bg-[#22C55E]/20 text-[#22C55E]",
@@ -45,6 +46,7 @@ function IntensityBar({ value, max }) {
 
 
 export default function MeasurePage() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("last_12_months");
   const [overview, setOverview] = useState(null);
@@ -143,7 +145,9 @@ export default function MeasurePage() {
               <div className="metric-card">
                 <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Total Upstream</p>
                 <p className="font-display text-3xl font-bold text-white">
-                  {overview?.total_upstream_tco2e?.toFixed(0) || "0"}
+                  {overview?.total_upstream_tco2e
+                    ? Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(overview.total_upstream_tco2e)
+                    : "0"}
                   <span className="text-lg text-gray-500 ml-1">tCO₂e</span>
                 </p>
               </div>
@@ -236,6 +240,7 @@ export default function MeasurePage() {
                     <TableHead className="text-gray-400 font-display uppercase tracking-wider text-xs">Intensity</TableHead>
                     <TableHead className="text-gray-400 font-display uppercase tracking-wider text-xs">Quality</TableHead>
                     <TableHead className="text-gray-400 font-display uppercase tracking-wider text-xs">Uncertainty</TableHead>
+                    <TableHead className="text-gray-400 font-display uppercase tracking-wider text-xs text-right">Evidence</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -254,6 +259,24 @@ export default function MeasurePage() {
                       </TableCell>
                       <TableCell>
                         <Badge className={uncertaintyColor[s.uncertainty] || uncertaintyColor.high}>{s.uncertainty}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          className="h-8 px-3"
+                          variant="outline"
+                          onClick={() => {
+                            const params = new URLSearchParams();
+                            if (s.entity_type) params.set("entity_type", s.entity_type);
+                            if (s.entity_id) params.set("entity_id", s.entity_id);
+                            params.set("field_key", "tco2e");
+                            params.set("field_label", "Total upstream emissions");
+                            params.set("value", String(s.tco2e));
+                            params.set("unit", "tCO2e");
+                            navigate(`/dashboard/evidence?${params.toString()}`);
+                          }}
+                        >
+                          Add
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

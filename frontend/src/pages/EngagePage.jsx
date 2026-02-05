@@ -16,9 +16,7 @@ import { Badge } from "@/components/ui/badge";
 
 import { DeepDivePanel } from "@/components/DeepDivePanel";
 import { EngagementBadge } from "@/components/SupplierComponents";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { apiUrl } from "@/lib/api";
 
 export default function EngagePage({ focusSupplierId }) {
   const [suppliers, setSuppliers] = useState([]);
@@ -32,8 +30,8 @@ export default function EngagePage({ focusSupplierId }) {
     setLoading(true);
     try {
       const [supplierRes, engagementRes] = await Promise.all([
-        axios.get(`${API}/suppliers`, { withCredentials: true }),
-        axios.get(`${API}/engagements`, { withCredentials: true }),
+        axios.get(apiUrl("/suppliers"), { withCredentials: true }),
+        axios.get(apiUrl("/engagements"), { withCredentials: true }),
       ]);
 
       const supplierData = supplierRes.data.suppliers || [];
@@ -66,7 +64,7 @@ export default function EngagePage({ focusSupplierId }) {
 
   const updateEngagement = async (supplierId, status) => {
     try {
-      const response = await axios.put(`${API}/engagements/${supplierId}`, { status }, { withCredentials: true });
+      const response = await axios.put(apiUrl(`/engagements/${supplierId}`), { status }, { withCredentials: true });
       setEngagements((prev) => ({ ...prev, [supplierId]: response.data }));
       toast.success("Engagement status updated");
     } catch {

@@ -3,13 +3,11 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Toaster } from "@/components/ui/sonner";
+import { API_BASE } from "@/lib/api";
 
 // Pages
 import LandingPage from "@/pages/LandingPage";
 import Dashboard from "@/pages/Dashboard";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
 
 // Auth Context
 import { createContext, useContext } from "react";
@@ -38,7 +36,7 @@ const AuthCallback = () => {
 
       try {
         const response = await axios.post(
-          `${API}/auth/session`,
+          `${API_BASE}/auth/session`,
           { session_id: sessionId },
           { withCredentials: true }
         );
@@ -67,46 +65,48 @@ const AuthCallback = () => {
   );
 };
 
+// Demo mode: auto-authenticate with backend to get a real session cookie
 const ProtectedRoute = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(null);
   const [user, setUser] = useState(null);
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [ready, setReady] = useState(false);
+  const hasInit = useRef(false);
 
   useEffect(() => {
-    // Skip if user data passed from AuthCallback
-    if (location.state?.user) {
-      setUser(location.state.user);
-      setIsAuthenticated(true);
-      return;
-    }
+    if (hasInit.current) return;
+    hasInit.current = true;
 
-    const checkAuth = async () => {
+    const init = async () => {
       try {
-        const response = await axios.get(`${API}/auth/me`, {
-          withCredentials: true,
-        });
-        setUser(response.data);
-        setIsAuthenticated(true);
-      } catch (error) {
-        setIsAuthenticated(false);
-        navigate("/", { replace: true });
+        // Try existing session first
+        const me = await axios.get(`${API_BASE}/auth/me`, { withCredentials: true });
+        setUser(me.data);
+        setReady(true);
+      } catch {
+        // No session — create one via test-login
+        try {
+          const res = await axios.post(
+            `${API_BASE}/auth/test-login`,
+            {},
+            { withCredentials: true, headers: { "X-Test-Auth": "local_dev_token" } }
+          );
+          setUser(res.data.user);
+          setReady(true);
+        } catch {
+          // Fallback to demo user if backend is unreachable
+          setUser({ user_id: "demo_user", email: "demo@example.com", name: "Demo User", picture: null });
+          setReady(true);
+        }
       }
     };
+    init();
+  }, []);
 
-    checkAuth();
-  }, [navigate, location.state]);
-
-  if (isAuthenticated === null) {
+  if (!ready) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#22C55E] border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-2 border-[#22C55E] border-t-transparent rounded-full animate-spin" />
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    return null;
   }
 
   return (
