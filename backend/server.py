@@ -548,7 +548,11 @@ async def execution_ocr(payload: OcrRequest, request: Request):
 
 @api_router.post("/execution/render-pdf-page")
 async def render_pdf_page(payload: Dict[str, Any], request: Request):
-    """Render a PDF (already stored in disclosure_docs local_path) to a PNG base64.
+    """Render a PDF to a PNG base64.
+
+    Supported sources:
+    - disclosure_docs.local_path (downloaded https PDFs)
+    - disclosure_docs.url starting with seed:// (renders a simple text page image)
 
     Body:
     {
@@ -558,7 +562,7 @@ async def render_pdf_page(payload: Dict[str, Any], request: Request):
     }
 
     Returns:
-    { "png_base64": "...", "width": 123, "height": 456 }
+    { "png_base64": "...", "width": 123, "height": 456, "mime_type": "image/png" }
     """
     user = await get_user_from_request(request)
     tenant_id = user["user_id"]
@@ -571,15 +575,77 @@ async def render_pdf_page(payload: Dict[str, Any], request: Request):
         raise HTTPException(status_code=400, detail="doc_id required")
 
     doc = await db.disclosure_docs.find_one({"tenant_id": tenant_id, "doc_id": doc_id}, {"_id": 0})
-    if not doc or not doc.get("local_path"):
-        raise HTTPException(status_code=404, detail="PDF not found for this tenant/doc_id")
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
 
-    pdf_enc = Path(doc["local_path"]).read_bytes()
-    pdf_bytes = _decrypt_bytes(pdf_enc)
+    # 1) Real PDF bytes path
+    if doc.get("local_path"):
+        pdf_enc = Path(doc["local_path"]).read_bytes()
+        pdf_bytes = _decrypt_bytes(pdf_enc)
+        png_b64, w, h = _pdf_page_to_png_base64(pdf_bytes, page_number=page_number, zoom=zoom)
+        return {"png_base64": png_b64, "width": w, "height": h, "mime_type": "image/png"}
 
-    png_b64, w, h = _pdf_page_to_png_base64(pdf_bytes, page_number=page_number, zoom=zoom)
+    # 2) Seeded docs: render simple text image so the OCR pipeline can be exercised end-to-end
+    url = doc.get("url", "")
+    if url.startswith("seed://"):
+        from PIL import Image, ImageDraw, ImageFont
 
-    return {"png_base64": png_b64, "width": w, "height": h, "mime_type": "image/png"}
+        raw = await _seed_doc_text(url)
+        # naive: pick the requested page from [Page N] blocks if present
+        text = raw
+        parts = re.split(r"\[Page\s+(\d+)\]", raw)
+        if len(parts) >= 3:
+            i = 1
+            chosen = None
+            while i < len(parts) - 1:
+                pnum = int(parts[i])
+                ptxt = parts[i + 1].strip()
+                if pnum == page_number:
+                    chosen = ptxt
+                    break
+                i += 2
+            if chosen is not None:
+                text = chosen
+
+        # create a readable page-like image
+        width, height = 1400, 1800
+        img = Image.new("RGB", (width, height), (255, 255, 255))
+        draw = ImageDraw.Draw(img)
+        try:
+            font = ImageFont.truetype("DejaVuSans.ttf", 28)
+        except Exception:
+            font = ImageFont.load_default()
+
+        margin = 80
+        y = margin
+        for line in re.split(r"(?<=\.)\s+", text.strip()):
+            if not line:
+                continue
+            # wrap
+            words = line.split()
+            cur = ""
+            for w_ in words:
+                test = (cur + " " + w_).strip()
+                if draw.textlength(test, font=font) > (width - 2 * margin):
+                    draw.text((margin, y), cur, fill=(0, 0, 0), font=font)
+                    y += 40
+                    cur = w_
+                else:
+                    cur = test
+            if cur:
+                draw.text((margin, y), cur, fill=(0, 0, 0), font=font)
+                y += 50
+            if y > height - margin:
+                break
+
+        import io
+
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        png_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        return {"png_base64": png_b64, "width": width, "height": height, "mime_type": "image/png"}
+
+    raise HTTPException(status_code=400, detail="Document is not renderable (missing PDF bytes)")
 
 
 
