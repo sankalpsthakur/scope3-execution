@@ -138,27 +138,41 @@ export default function ReduceDashboard({ onGoToEngage }) {
     }
   }, [filters]);
 
+  const [pipelineReady, setPipelineReady] = useState(false);
+
   useEffect(() => {
-    // Simulate pipeline output precomputation for the demo.
-    const runPipeline = async () => {
+    let cancelled = false;
+
+    const run = async () => {
       try {
+        // Simulate the nightly batch pipeline. This seeds Measure + Reduce + evidence + cached recommendations.
         await axios.post(`${API}/pipeline/run`, {}, { withCredentials: true });
+        if (cancelled) return;
+        setPipelineReady(true);
+
+        await Promise.all([fetchEngagements(), fetchHeatmap(), fetchFilteredSuppliers()]);
       } catch (e) {
         // If auth isn't ready yet, the caller will retry when the page is revisited.
+        if (!cancelled) {
+          setPipelineReady(true);
+          fetchEngagements();
+          fetchHeatmap();
+          fetchFilteredSuppliers();
+        }
       }
     };
 
-    runPipeline();
-    fetchEngagements();
-  }, [fetchEngagements]);
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchEngagements, fetchHeatmap, fetchFilteredSuppliers]);
 
   useEffect(() => {
-    fetchHeatmap();
-  }, [fetchHeatmap]);
-
-  useEffect(() => {
-    fetchFilteredSuppliers();
-  }, [fetchFilteredSuppliers]);
+    // When filters change, refetch server-side results (after pipeline is ready).
+    if (pipelineReady) fetchFilteredSuppliers();
+  }, [pipelineReady, fetchFilteredSuppliers]);
 
   useEffect(() => {
     fetchFilteredSuppliers();
