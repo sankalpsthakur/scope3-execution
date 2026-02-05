@@ -32,6 +32,8 @@ db = client[os.environ["DB_NAME"]]
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+scheduler: Optional[AsyncIOScheduler] = None
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
